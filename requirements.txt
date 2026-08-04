@@ -9,8 +9,8 @@ PyGithub==2.9.1
 SpeechRecognition==3.14.5
 pyttsx3==2.99
 audio-recorder-streamlit
-pyaudio
 feedparser==6.0.12
+
 apscheduler==3.11.2
 ddgs==9.14.4
 arxiv==4.0.0
