@@ -1,11 +1,23 @@
 import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+def _get_secret(key: str, default: str = None) -> str:
+    val = os.getenv(key)
+    if not val:
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets") and key in st.secrets:
+                val = str(st.secrets[key])
+        except Exception:
+            pass
+    return val or default
+
+GROQ_API_KEY = _get_secret("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise EnvironmentError("GROQ_API_KEY is not set in .env")
+    raise EnvironmentError("GROQ_API_KEY is not set in .env or Streamlit Secrets")
 
 FAST_MODEL = "llama-3.1-8b-instant"
 SMART_MODEL = "llama-3.3-70b-versatile"
@@ -16,13 +28,14 @@ CHROMA_PATH = "./chroma_db"
 # ─── Feature Flags ────────────────────────────────────────────────
 # Set to False to skip the second self-reflection LLM call per response.
 # Disabling halves API costs and latency significantly.
-ENABLE_SELF_REFLECTION = os.getenv("ENABLE_SELF_REFLECTION", "true").lower() == "true"
+ENABLE_SELF_REFLECTION = (_get_secret("ENABLE_SELF_REFLECTION", "true") or "true").lower() == "true"
 
-# ─── Personal Details (from .env — never hardcode PII in source) ──
-PERSONAL_NAME   = os.getenv("PERSONAL_NAME", "Farhan Aaqil")
-PERSONAL_EMAIL  = os.getenv("EMAIL_ADDRESS", "fadurrani543@gmail.com")
-AFFILIATION     = os.getenv("AFFILIATION", "Jayaprakash Narayan College of Engineering, Mahbubnagar, Telangana, India")
-DEPARTMENT      = os.getenv("DEPARTMENT", "Artificial Intelligence and Machine Learning")
+# ─── Personal Details (from .env or st.secrets — never hardcode PII in source) ──
+PERSONAL_NAME   = _get_secret("PERSONAL_NAME", "Farhan Aaqil")
+PERSONAL_EMAIL  = _get_secret("EMAIL_ADDRESS", "fadurrani543@gmail.com")
+AFFILIATION     = _get_secret("AFFILIATION", "Jayaprakash Narayan College of Engineering, Mahbubnagar, Telangana, India")
+DEPARTMENT      = _get_secret("DEPARTMENT", "Artificial Intelligence and Machine Learning")
+
 
 # ─── Model Selection ──────────────────────────────────────────────
 
