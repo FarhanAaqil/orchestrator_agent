@@ -1,6 +1,14 @@
+import sys
+import os
 import re
 import logging
 from datetime import datetime
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 
 from orchestrator.router import route_task
 from orchestrator.pipeline import Pipeline

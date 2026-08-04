@@ -5,8 +5,12 @@ __pycache__/
 
 # Environments
 .env
+.venv/
 venv/
+ENV/
+env/
 .env.local
+
 
 # Editor directories and files
 .vscode/

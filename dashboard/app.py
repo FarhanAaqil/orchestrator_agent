@@ -5,6 +5,12 @@ import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
+
 from orchestrator.master import handle, get_health_monitor, get_pipeline
 from scheduler.background import get_notifications, mark_all_read
 from voice.voice_handler import speak, listen
