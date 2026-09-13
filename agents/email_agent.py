@@ -51,11 +51,11 @@ class EmailAgent(BaseAgent):
             "description": "Show all drafted emails and stats. Use for 'show emails', 'email dashboard', 'my emails'.",
             "args": {}
         },
-        {
-            "name": "send_email",
-            "description": "Send a drafted email by ID. Use for 'send email [ID]', 'send to [email]'.",
-            "args": {"email_id": "int", "to_email": "str"}
-        },
+        # NOTE: send_email removed from TOOLS — direct send without approval gate
+        # is a live safety hole. Email sending is gated behind the approval queue
+        # in orchestrator_core/core/approval_gate.py.
+        # The send_email() method remains below for reference but must NOT be
+        # an LLM-selectable tool in any supported agent path.
         {
             "name": "draft_general_email",
             "description": "Draft a general, non-specific email. Use for 'send an email to [email] saying [context]', 'greetings email', etc.",
