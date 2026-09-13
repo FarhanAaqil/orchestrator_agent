@@ -66,3 +66,4 @@ node_modules/
 
 # Planning documents (not part of deployed codebase)
 New plan/
+implementation_plan.md
