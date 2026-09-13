@@ -1,4 +1,12 @@
 """
+NOT SUPPORTED in orchestrator_core v2.
+
+This module is an experimental voice I/O helper. It is:
+  - Not imported by orchestrator_core/
+  - Not covered by any test in the CI suite
+  - Not deployed in the production Docker image
+  - Kept as a reference implementation only
+
 Voice handler with graceful degradation.
 
 Both pyttsx3 (TTS) and SpeechRecognition can fail to initialise on some
