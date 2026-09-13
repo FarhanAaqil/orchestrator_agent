@@ -1,4 +1,13 @@
 """
+NOT SUPPORTED in orchestrator_core v2.
+
+Job search features are experimental. This agent:
+  - Is not imported by orchestrator_core/
+  - Is not covered by any test in the CI suite
+  - Is not deployed in the production Docker image
+  - Will be moved to experimental/job_search_agent/ in Phase 4
+  - Kept as a reference implementation only
+
 Job Agent — Real multi-source job search.
 
 Sources (all free, no API key required):
