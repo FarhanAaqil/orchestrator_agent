@@ -1,5 +1,12 @@
 # Aaqil - Personal AI Chief of Staff
 
+> **Status (2026-09-13):** Active v2 rewrite in progress.
+> The current codebase is the original v1 implementation. The v2 refactor is being
+> built in `orchestrator_core/` as a standalone FastAPI service with a measured router,
+> an unbypassable approval gate, a full test suite, and CI. This README will be
+> rewritten in Phase 5 once every claim in it can be backed by a passing test.
+> See `New plan/01-PRD.md` and `BASELINE.md` for the current rewrite scope and status.
+
 Aaqil is a Python-based multi-agent assistant that routes natural-language commands to specialized agents for career planning, job search, research writing, content creation, GitHub support, email drafting, daily briefings, and project tracking.
 
 The project uses a Streamlit chat interface, Groq-hosted LLM calls, ChromaDB memory, SQLite persistence, browser automation, web search, ArXiv search, voice input/output, and an APScheduler background worker.

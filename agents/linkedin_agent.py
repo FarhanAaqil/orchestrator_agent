@@ -1,4 +1,13 @@
 """
+NOT SUPPORTED in orchestrator_core v2.
+
+LinkedIn-related features are experimental. This agent:
+  - Is not imported by orchestrator_core/
+  - Is not covered by any test in the CI suite
+  - Is not deployed in the production Docker image
+  - Will be moved to experimental/linkedin_agent/ in Phase 4
+  - Kept as a reference implementation only
+
 LinkedIn Agent — No Playwright, no login required.
 Uses DuckDuckGo to search LinkedIn profiles and jobs.
 Generates all outreach content via LLM.

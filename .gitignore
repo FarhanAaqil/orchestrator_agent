@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
 
 # Environments
 .env
@@ -11,16 +12,21 @@ ENV/
 env/
 .env.local
 
-
 # Editor directories and files
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # Database files
 *.sqlite3
 aaqil.db
 database/tracker.db
+
+# SQLite write-ahead log and shared memory files
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Chroma DB storage
 chroma_db/
@@ -28,6 +34,9 @@ chroma_db/
 # Logs and runtime files
 *.log
 *.pid
+
+# Runtime cache artifacts
+job_cache.json
 
 # Python packaging
 build/
@@ -54,3 +63,7 @@ htmlcov/
 
 # Node modules (if any frontend components are later added)
 node_modules/
+
+# Planning documents (not part of deployed codebase)
+New plan/
+implementation_plan.md
