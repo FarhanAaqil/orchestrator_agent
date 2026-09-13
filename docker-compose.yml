@@ -5,7 +5,9 @@ services:
     build: .
     container_name: aaqil_orchestrator
     ports:
-      - "8000:8000"
+      # Bind to localhost only — do not expose to 0.0.0.0 without an
+      # authenticated reverse proxy or bearer-token middleware in place.
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./.env:/app/.env
       - ./aaqil.db:/app/aaqil.db
