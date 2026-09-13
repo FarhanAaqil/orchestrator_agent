@@ -1,0 +1,41 @@
+﻿# BASELINE — Orchestrator Agent v2 Rewrite Reference
+
+## Pre-rewrite commit hash
+```
+d558406  fix(deploy): add packages.txt and remove pyaudio for Streamlit Cloud Linux compatibility
+```
+This is the last commit of the v1 codebase before the v2 rewrite began.
+Tag: `v1-archive` points to this commit.
+
+## v2 rewrite started at
+```
+6535be7  Add New plan/ to gitignore along with runtime artifacts and WAL files
+```
+Date: 2026-09-13
+
+## Branch
+All v2 work lands on `master`.
+
+## Git history purge (GATED — run only after Phases 0-4 are green)
+Paths to purge from history:
+- `aaqil.db`
+- `chroma_db/`
+- `database/tracker.db`
+
+Command (run on a fresh clone, not in-place):
+```bash
+pip install git-filter-repo
+git filter-repo --path aaqil.db --path chroma_db --path database/tracker.db --invert-paths
+git log --all --full-history -- aaqil.db chroma_db/ database/tracker.db  # must be empty
+```
+
+Pre-purge backup: keep local zip archive until verified.
+
+## Verification log
+- [ ] Phase 0 complete
+- [ ] Phase 1 complete (FastAPI core)
+- [ ] Phase 2 complete (router eval)
+- [ ] Phase 3 complete (approval gate tests)
+- [ ] Phase 4 complete (CI green)
+- [ ] History purge executed and verified
+- [ ] Pre-purge backup deleted only after verified
