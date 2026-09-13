@@ -1,4 +1,12 @@
 """
+NOT SUPPORTED in orchestrator_core v2.
+
+Project Manager agent is experimental. It:
+  - Is not imported by orchestrator_core/
+  - Is not covered by any test in the CI suite
+  - Will be moved to experimental/project_manager_agent/ in Phase 4
+  - Kept as a reference implementation only
+
 Project Manager Agent — Tracks projects, tasks, deadlines, and goals.
 Fully LLM-dispatched via think_and_act().
 """

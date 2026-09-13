@@ -1,4 +1,12 @@
 """
+NOT SUPPORTED in orchestrator_core v2.
+
+GitHub agent is experimental. It:
+  - Is not imported by orchestrator_core/
+  - Is not covered by any test in the CI suite
+  - Will be moved to experimental/github_agent/ in Phase 4
+  - Kept as a reference implementation only
+
 GitHub Agent — Real GitHub API + LLM-driven dispatch.
 Manages repos, generates READMEs, commit messages, and profile insights.
 """
