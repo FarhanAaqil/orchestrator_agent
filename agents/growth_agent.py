@@ -52,11 +52,10 @@ class GrowthAgent(BaseAgent):
             "description": "Show all content posts and stats. Use for 'content dashboard', 'my content', 'show content'.",
             "args": {}
         },
-        {
-            "name": "publish_to_hashnode_cmd",
-            "description": "Publish a blog post to Hashnode. Use for 'publish to hashnode', 'publish blog'.",
-            "args": {"title": "str (optional)", "content": "str (optional)"}
-        },
+        # NOTE: publish_to_hashnode_cmd and publish_to_devto_cmd removed from TOOLS.
+        # Direct publish without approval gate is a live safety hole — the LLM could
+        # trigger external publish actions without operator review.
+        # Publishing is gated behind orchestrator_core/core/approval_gate.py.
         {
             "name": "ab_test_linkedin_post",
             "description": "Generate A/B test variants for a LinkedIn post. Use for 'A/B test linkedin post for [project]'.",
@@ -68,6 +67,7 @@ class GrowthAgent(BaseAgent):
             "args": {"style": "str (e.g., 'story', 'technical')", "likes": "int", "comments": "int"}
         }
     ]
+
 
     def __init__(self):
         super().__init__(
