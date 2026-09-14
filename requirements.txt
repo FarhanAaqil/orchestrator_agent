@@ -14,3 +14,10 @@ feedparser==6.0.12
 apscheduler==3.11.2
 ddgs==9.14.4
 arxiv==4.0.0
+
+# v2 FastAPI service & core dependencies
+fastapi==0.136.3
+uvicorn[standard]==0.46.0
+pydantic-settings==2.14.0
+requests==2.32.5
+pypdf==6.12.2

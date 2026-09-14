@@ -1,4 +1,4 @@
-﻿# BASELINE — Orchestrator Agent v2 Rewrite Reference
+# BASELINE — Orchestrator Agent v2 Rewrite Reference
 
 ## Pre-rewrite commit hash
 ```
@@ -32,10 +32,15 @@ git log --all --full-history -- aaqil.db chroma_db/ database/tracker.db  # must 
 Pre-purge backup: keep local zip archive until verified.
 
 ## Verification log
-- [ ] Phase 0 complete
-- [ ] Phase 1 complete (FastAPI core)
+- [x] Phase 0 complete (Safety baseline established, bypass tools removed, .env.example created)
+- [x] Phase 1 complete (FastAPI core, lazy config, SQLite migrations, scoped ChromaDB, GET /health verified)
 - [ ] Phase 2 complete (router eval)
 - [ ] Phase 3 complete (approval gate tests)
 - [ ] Phase 4 complete (CI green)
 - [ ] History purge executed and verified
 - [ ] Pre-purge backup deleted only after verified
+
+## FastAPI Core Startup Smoke Test (Phase 1)
+- Verified `uvicorn orchestrator_core.main:app` imports with zero side effects.
+- SQLite schema migrations execute automatically in lifespan handler.
+- Endpoint `GET /health` responds `200 OK` with `{"status": "ok", "version": "2.0.0-alpha", "environment": "development"}`.
