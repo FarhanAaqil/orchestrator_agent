@@ -11,3 +11,22 @@ venv/
 aaqil.db
 chroma_db/
 .env
+
+# Experimental agents — not part of the supported v2 image
+experimental/
+
+# Planning docs — never deployed
+New plan/
+docs/
+
+# Eval results are generated artifacts, not source
+eval/results/
+
+# Tests run in CI, not in the prod image
+tests/
+
+# Runtime database files
+database/
+*.db
+*.db-wal
+*.db-shm
