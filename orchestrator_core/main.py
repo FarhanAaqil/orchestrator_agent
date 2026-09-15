@@ -3,11 +3,15 @@ orchestrator_core/main.py
 
 FastAPI composition root for Orchestrator Agent v2.
 Initializes the application with lifecycle-managed database migrations,
-exception mapping, and core health check endpoint.
+structured request logging middleware, exception mapping, and health check.
 """
 
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -23,23 +27,22 @@ from orchestrator_core.exceptions import (
 )
 from orchestrator_core.models import ErrorResponse
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     FastAPI lifespan context manager.
-    Runs database schema migrations on startup with no import-time side effects.
+    Runs database schema migrations on startup — no import-time side effects.
     """
-    # 1. Startup: initialize database schema
     conn = get_db()
     try:
         run_migrations(conn)
+        logger.info("Database migrations complete.")
     finally:
         conn.close()
-
     yield
-
-    # 2. Shutdown: clean up any active resources if needed
 
 
 settings = get_settings()
@@ -52,64 +55,82 @@ app = FastAPI(
 )
 
 
+# ── Structured request logging middleware ─────────────────────────────────────
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    """Log every request with command, agent (if present), and latency."""
+    request_id = str(uuid.uuid4())[:8]
+    t_start = time.monotonic()
+
+    logger.info(
+        "[%s] → %s %s",
+        request_id, request.method, request.url.path,
+    )
+
+    response = await call_next(request)
+
+    latency_ms = int((time.monotonic() - t_start) * 1000)
+    logger.info(
+        "[%s] ← %d  latency=%dms",
+        request_id, response.status_code, latency_ms,
+    )
+    return response
+
+
 # ── Global exception handlers ──────────────────────────────────────────────────
 
 @app.exception_handler(ApprovalNotFoundError)
 async def approval_not_found_handler(request: Request, exc: ApprovalNotFoundError):
-    return JSONResponse(
-        status_code=404,
-        content=ErrorResponse(error="APPROVAL_NOT_FOUND", detail=str(exc)).model_dump(),
-    )
+    return JSONResponse(status_code=404,
+        content=ErrorResponse(error="APPROVAL_NOT_FOUND", detail=str(exc)).model_dump())
 
 
 @app.exception_handler(ApprovalNotGrantedError)
 async def approval_not_granted_handler(request: Request, exc: ApprovalNotGrantedError):
-    return JSONResponse(
-        status_code=409,
-        content=ErrorResponse(error="APPROVAL_NOT_GRANTED", detail=str(exc)).model_dump(),
-    )
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="APPROVAL_NOT_GRANTED", detail=str(exc)).model_dump())
 
 
 @app.exception_handler(ApprovalExpiredError)
 async def approval_expired_handler(request: Request, exc: ApprovalExpiredError):
-    return JSONResponse(
-        status_code=410,
-        content=ErrorResponse(error="APPROVAL_EXPIRED", detail=str(exc)).model_dump(),
-    )
+    return JSONResponse(status_code=410,
+        content=ErrorResponse(error="APPROVAL_EXPIRED", detail=str(exc)).model_dump())
 
 
 @app.exception_handler(ApprovalAlreadyExecutedError)
 async def approval_already_executed_handler(request: Request, exc: ApprovalAlreadyExecutedError):
-    return JSONResponse(
-        status_code=409,
-        content=ErrorResponse(error="APPROVAL_ALREADY_EXECUTED", detail=str(exc)).model_dump(),
-    )
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="APPROVAL_ALREADY_EXECUTED", detail=str(exc)).model_dump())
 
 
 @app.exception_handler(ApprovalClaimConflictError)
 async def approval_claim_conflict_handler(request: Request, exc: ApprovalClaimConflictError):
-    return JSONResponse(
-        status_code=409,
-        content=ErrorResponse(error="APPROVAL_CLAIM_CONFLICT", detail=str(exc)).model_dump(),
-    )
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="APPROVAL_CLAIM_CONFLICT", detail=str(exc)).model_dump())
 
 
 @app.exception_handler(CircuitOpenError)
 async def circuit_open_handler(request: Request, exc: CircuitOpenError):
-    return JSONResponse(
-        status_code=503,
-        content=ErrorResponse(error="CIRCUIT_OPEN", detail=str(exc)).model_dump(),
-    )
+    return JSONResponse(status_code=503,
+        content=ErrorResponse(error="CIRCUIT_OPEN", detail=str(exc)).model_dump())
+
+
+# ── Route registration ────────────────────────────────────────────────────────
+
+from orchestrator_core.routes import route as route_module
+from orchestrator_core.routes import dispatch as dispatch_module
+from orchestrator_core.routes import runs as runs_module
+
+app.include_router(route_module.router)
+app.include_router(dispatch_module.router)
+app.include_router(runs_module.router)
 
 
 # ── Health check endpoint ─────────────────────────────────────────────────────
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    """Health check endpoint confirming service status, version, and environment."""
-    current_settings = get_settings()
-    return {
-        "status": "ok",
-        "version": current_settings.app_version,
-        "environment": current_settings.environment,
-    }
+    """Health check confirming service status, version, and environment."""
+    s = get_settings()
+    return {"status": "ok", "version": s.app_version, "environment": s.environment}
