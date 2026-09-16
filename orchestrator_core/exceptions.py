@@ -1,4 +1,4 @@
-﻿"""
+"""
 orchestrator_core/exceptions.py
 
 All custom exceptions for the v2 FastAPI service.
@@ -57,3 +57,13 @@ class CircuitOpenError(Exception):
 class RouterConfidenceTooLowError(Exception):
     """Not raised externally; used internally to signal clarification needed."""
     pass
+
+
+class SSRFViolationError(Exception):
+    """
+    Raised when a PDF/URL fetch violates the SSRF guard policy.
+    Policy: HTTPS only, arxiv.org allowlist, 10 MB size limit, no redirects.
+    """
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(f"SSRF policy violation: {reason}")

@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 from orchestrator_core.config import get_settings
 from orchestrator_core.storage.db import get_db, run_migrations
+from orchestrator_core.core.scheduler import start_scheduler, stop_scheduler
 from orchestrator_core.exceptions import (
     ApprovalNotFoundError,
     ApprovalNotGrantedError,
@@ -24,6 +25,7 @@ from orchestrator_core.exceptions import (
     ApprovalAlreadyExecutedError,
     ApprovalClaimConflictError,
     CircuitOpenError,
+    SSRFViolationError,
 )
 from orchestrator_core.models import ErrorResponse
 
@@ -34,7 +36,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     FastAPI lifespan context manager.
-    Runs database schema migrations on startup — no import-time side effects.
+    Runs database schema migrations on startup, then starts the scheduler.
+    Shuts the scheduler down cleanly on exit.
     """
     conn = get_db()
     try:
@@ -42,7 +45,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Database migrations complete.")
     finally:
         conn.close()
+
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 settings = get_settings()
@@ -116,15 +122,25 @@ async def circuit_open_handler(request: Request, exc: CircuitOpenError):
         content=ErrorResponse(error="CIRCUIT_OPEN", detail=str(exc)).model_dump())
 
 
+@app.exception_handler(SSRFViolationError)
+async def ssrf_violation_handler(request: Request, exc: SSRFViolationError):
+    return JSONResponse(status_code=400,
+        content=ErrorResponse(error="SSRF_VIOLATION", detail=str(exc)).model_dump())
+
+
 # ── Route registration ────────────────────────────────────────────────────────
 
 from orchestrator_core.routes import route as route_module
 from orchestrator_core.routes import dispatch as dispatch_module
 from orchestrator_core.routes import runs as runs_module
+from orchestrator_core.routes import approvals as approvals_module
+from orchestrator_core.routes import pipeline as pipeline_module
 
 app.include_router(route_module.router)
 app.include_router(dispatch_module.router)
 app.include_router(runs_module.router)
+app.include_router(approvals_module.router)
+app.include_router(pipeline_module.router)
 
 
 # ── Health check endpoint ─────────────────────────────────────────────────────
