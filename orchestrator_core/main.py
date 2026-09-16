@@ -135,12 +135,14 @@ from orchestrator_core.routes import dispatch as dispatch_module
 from orchestrator_core.routes import runs as runs_module
 from orchestrator_core.routes import approvals as approvals_module
 from orchestrator_core.routes import pipeline as pipeline_module
+from orchestrator_core.routes import router_eval as router_eval_module
 
 app.include_router(route_module.router)
 app.include_router(dispatch_module.router)
 app.include_router(runs_module.router)
 app.include_router(approvals_module.router)
 app.include_router(pipeline_module.router)
+app.include_router(router_eval_module.router)
 
 
 # ── Health check endpoint ─────────────────────────────────────────────────────
