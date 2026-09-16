@@ -1,0 +1,33 @@
+[
+  {"id": 1,  "command": "tailor my resume for a machine learning internship at Google", "expected_agent": "career_agent"},
+  {"id": 2,  "command": "skill gap analysis for a data scientist role at Amazon", "expected_agent": "career_agent"},
+  {"id": 3,  "command": "generate interview prep for Microsoft SWE intern", "expected_agent": "career_agent"},
+  {"id": 4,  "command": "write a cover letter for AI researcher at DeepMind", "expected_agent": "career_agent"},
+  {"id": 5,  "command": "roadmap for becoming an ML engineer in 90 days", "expected_agent": "career_agent"},
+  {"id": 6,  "command": "show my skills dashboard", "expected_agent": "career_agent"},
+  {"id": 7,  "command": "I got rejected from Jala Academy, track that outcome", "expected_agent": "career_agent"},
+
+  {"id": 8,  "command": "write a research paper on federated learning for IoT devices", "expected_agent": "research_agent"},
+  {"id": 9,  "command": "find reputable journals for publishing a paper on NLP transformers", "expected_agent": "research_agent"},
+  {"id": 10, "command": "read and summarize https://arxiv.org/pdf/2301.00001", "expected_agent": "research_agent"},
+  {"id": 11, "command": "check if IJCA is a predatory journal", "expected_agent": "research_agent"},
+  {"id": 12, "command": "draft a journal submission email for IEEE Access", "expected_agent": "research_agent"},
+  {"id": 13, "command": "recommend journals for my deep learning diabetes paper", "expected_agent": "research_agent"},
+
+  {"id": 14, "command": "write a linkedin post about my new LLM agent project", "expected_agent": "growth_content_agent"},
+  {"id": 15, "command": "twitter thread on how I built a self-improving code agent", "expected_agent": "growth_content_agent"},
+  {"id": 16, "command": "blog post for Hashnode about my orchestrator agent architecture", "expected_agent": "growth_content_agent"},
+  {"id": 17, "command": "devlog day 3 — built the circuit breaker today", "expected_agent": "growth_content_agent"},
+  {"id": 18, "command": "content calendar for next 2 weeks", "expected_agent": "growth_content_agent"},
+  {"id": 19, "command": "generate SEO tags for my AI blog post", "expected_agent": "growth_content_agent"},
+
+  {"id": 20, "command": "critique this cover letter and improve it if the score is low: Dear Hiring Manager...", "expected_agent": "critic_agent"},
+  {"id": 21, "command": "evaluate this LinkedIn post for quality: Excited to share my new project...", "expected_agent": "critic_agent"},
+  {"id": 22, "command": "review my research paper abstract and score it", "expected_agent": "critic_agent"},
+  {"id": 23, "command": "check the quality of this email draft and rewrite if needed", "expected_agent": "critic_agent"},
+
+  {"id": 24, "command": "help me with my career", "expected_agent": "career_agent", "ambiguous": true},
+  {"id": 25, "command": "write something for my project", "expected_agent": "growth_content_agent", "ambiguous": true},
+  {"id": 26, "command": "improve my paper", "expected_agent": "research_agent", "ambiguous": true},
+  {"id": 27, "command": "review this", "expected_agent": "critic_agent", "ambiguous": true}
+]
