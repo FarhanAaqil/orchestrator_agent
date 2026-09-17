@@ -34,8 +34,8 @@ Pre-purge backup: keep local zip archive until verified.
 ## Verification log
 - [x] Phase 0 complete (Safety baseline established, bypass tools removed, .env.example created)
 - [x] Phase 1 complete (FastAPI core, lazy config, SQLite migrations, scoped ChromaDB, GET /health verified)
-- [ ] Phase 2 complete (router eval)
-- [ ] Phase 3 complete (approval gate tests)
+- [x] Phase 2 complete (router eval harness, fixed dataset of 54 commands, confusion matrix renderer, router eval routes)
+- [x] Phase 3 complete (approval gate tests, concurrency, SDK isolation, 29 passing unit & integration tests)
 - [ ] Phase 4 complete (CI green)
 - [ ] History purge executed and verified
 - [ ] Pre-purge backup deleted only after verified
@@ -44,3 +44,8 @@ Pre-purge backup: keep local zip archive until verified.
 - Verified `uvicorn orchestrator_core.main:app` imports with zero side effects.
 - SQLite schema migrations execute automatically in lifespan handler.
 - Endpoint `GET /health` responds `200 OK` with `{"status": "ok", "version": "2.0.0-alpha", "environment": "development"}`.
+
+## Test Suite Baseline (Day 6 / Phase 3)
+- Full pytest suite: 29 passed in 1.3s
+- Coverage areas: approval state machine, CAS claim concurrency, replay prevention, mid-crash reconciliation, SDK isolation static AST checks, router classification & clarification, circuit breaker fail-fast & recovery, and pipeline step auditing.
+- Mutation verification: manual status check disabling confirmed 3 red failures, cleanly restored to green.

@@ -124,7 +124,15 @@ def run_pipeline(
 
         elif pipeline_name == "publish":
             # Growth agent generates content — never publishes directly
-            _run_step(db, run_id, 1, "growth_content_agent", request.command, growth_content_agent.handle)
+            step_out = _run_step(db, run_id, 1, "growth_content_agent", request.command, growth_content_agent.handle)
+            res = step_out.get("result")
+            if res and getattr(res, "action_type", None):
+                from orchestrator_core.core.approval_gate import request_approval
+                request_approval(
+                    action_type=res.action_type,
+                    payload={"command": request.command, "content": res.output, "run_id": run_id},
+                    db=db,
+                )
 
         else:
             raise ValueError(f"Unknown pipeline: {pipeline_name!r}. Supported: research, apply, publish")
