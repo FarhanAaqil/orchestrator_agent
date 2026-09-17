@@ -1,4 +1,4 @@
-﻿"""
+"""
 orchestrator_core/models.py
 
 Shared Pydantic models used across routes, agents, and core logic.
