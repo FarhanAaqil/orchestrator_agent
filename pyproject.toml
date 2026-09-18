@@ -7,4 +7,6 @@ select = ["E", "F", "W"]
 ignore = [
     "E501",  # line too long
     "E402",  # module level import not at top of file
+    "F401",  # unused import
+    "F541",  # f-string without placeholder
 ]
