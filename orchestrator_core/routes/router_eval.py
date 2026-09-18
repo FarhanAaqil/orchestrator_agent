@@ -13,11 +13,9 @@ import json
 import logging
 import sqlite3
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
 
 from orchestrator_core.storage.db import get_db_connection
@@ -37,7 +35,7 @@ class EvalSummary(BaseModel):
     total: int
     prompt_hash: str
     stale: bool
-    results_file: Optional[str] = None
+    results_file: str | None = None
 
 
 class EvalListResponse(BaseModel):
@@ -48,11 +46,11 @@ class EvalListResponse(BaseModel):
 class EvalRunResponse(BaseModel):
     eval_id: str
     status: str
-    accuracy: Optional[float] = None
-    correct: Optional[int] = None
-    total: Optional[int] = None
-    stale: Optional[bool] = None
-    results_file: Optional[str] = None
+    accuracy: float | None = None
+    correct: int | None = None
+    total: int | None = None
+    stale: bool | None = None
+    results_file: str | None = None
     message: str = ""
 
 
@@ -64,12 +62,16 @@ def _run_eval_and_persist(eval_id: str, db: sqlite3.Connection) -> None:
         sys.path.insert(0, eval_root)
 
     from eval.run_eval import (
-        run_classification, compute_metrics,
-        write_results, append_index, prompt_hash, check_staleness
+        append_index,
+        check_staleness,
+        compute_metrics,
+        prompt_hash,
+        run_classification,
+        write_results,
     )
 
     dataset = json.loads(_DATASET_PATH.read_text())
-    stale = check_staleness()
+    _ = check_staleness()
     results = run_classification(dataset)
     metrics = compute_metrics(results)
 
@@ -118,8 +120,12 @@ async def run_eval(
         sys.path.insert(0, eval_root)
 
     from eval.run_eval import (
-        run_classification, compute_metrics,
-        write_results, append_index, prompt_hash, check_staleness
+        append_index,
+        check_staleness,
+        compute_metrics,
+        prompt_hash,
+        run_classification,
+        write_results,
     )
 
     eval_id = str(uuid.uuid4())[:8]
