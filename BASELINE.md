@@ -36,9 +36,18 @@ Pre-purge backup: keep local zip archive until verified.
 - [x] Phase 1 complete (FastAPI core, lazy config, SQLite migrations, scoped ChromaDB, GET /health verified)
 - [x] Phase 2 complete (router eval harness, fixed dataset of 54 commands, confusion matrix renderer, router eval routes)
 - [x] Phase 3 complete (approval gate tests, concurrency, SDK isolation, 29 passing unit & integration tests)
-- [ ] Phase 4 complete (CI green)
+- [x] Phase 4 complete (CI green)
 - [ ] History purge executed and verified
 - [ ] Pre-purge backup deleted only after verified
+
+## Day 7 Baseline — CI, Quarantine, Dockerfile, Auth Boundary
+- Quarantined 6 legacy v1 modules into `experimental/` (`linkedin_agent`, `job_search_agent`, `github_agent`, `project_manager_agent`, `info_agent`, `voice_io`) with `NOT_SUPPORTED.md` boundaries.
+- Bearer-token authentication dependency implemented in `orchestrator_core/dependencies.py` and applied to all non-health routes in `orchestrator_core/main.py`.
+- Dockerfile hardened with multi-stage build, non-root user (`appuser`), and healthcheck.
+- `.dockerignore` updated to strictly exclude experimental, planning, and evaluation artifacts.
+- GitHub Actions CI workflow implemented in `.github/workflows/ci.yml` with ruff linting, zero experimental imports check, zero SDK leakage check, and full test suite execution.
+- Full pytest suite: 34 passed in 1.8s (including 5 auth boundary unit tests).
+- CI Badge: `![CI](https://github.com/FarhanAaqil/orchestrater_agent/actions/workflows/ci.yml/badge.svg)`
 
 ## FastAPI Core Startup Smoke Test (Phase 1)
 - Verified `uvicorn orchestrator_core.main:app` imports with zero side effects.
