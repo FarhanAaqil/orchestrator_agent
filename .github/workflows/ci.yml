@@ -44,6 +44,10 @@ jobs:
           fi
           echo "Clean: Zero experimental imports found."
 
+      - name: CI Guard — Enforce zero SDK leakage
+        run: |
+          pytest tests/test_no_sdk_leakage.py -v
+
       - name: Run test suite (excluding live LLM)
         run: |
           pytest -m "not real_llm" -v
