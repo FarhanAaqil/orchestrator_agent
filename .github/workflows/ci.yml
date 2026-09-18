@@ -31,6 +31,19 @@ jobs:
         run: |
           ruff check orchestrator_core/ tests/
 
+      - name: CI Guard — Check forbidden experimental imports
+        run: |
+          echo "Verifying orchestrator_core has no imports from experimental..."
+          if grep -rn "from experimental" orchestrator_core/; then
+            echo "ERROR: Found forbidden imports from experimental in orchestrator_core!"
+            exit 1
+          fi
+          if grep -rn "import experimental" orchestrator_core/; then
+            echo "ERROR: Found forbidden imports from experimental in orchestrator_core!"
+            exit 1
+          fi
+          echo "Clean: Zero experimental imports found."
+
       - name: Run test suite (excluding live LLM)
         run: |
           pytest -m "not real_llm" -v
