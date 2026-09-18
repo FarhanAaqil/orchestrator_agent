@@ -8,6 +8,7 @@ or reliance on global mutable singletons.
 
 from functools import lru_cache
 from typing import Optional
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +20,10 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     router_model: str = "llama-3.3-70b-versatile"
     router_confidence_threshold: float = 0.6
-    auth_token: Optional[str] = None
+    auth_token: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("auth_token", "api_bearer_token"),
+    )
     environment: str = "development"
     app_version: str = "2.0.0-alpha"
 
