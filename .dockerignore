@@ -1,32 +1,48 @@
+# Version control & env
 .git
 .gitignore
-__pycache__
-*.pyc
-*.pyo
-*.pyd
+.env
+.env.example
+
+# Python caches & virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
 .Python
 env/
 venv/
 .venv/
-aaqil.db
-chroma_db/
-.env
 
-# Experimental agents — not part of the supported v2 image
+# Quarantined & experimental code
 experimental/
 
-# Planning docs — never deployed
+# Legacy v1 folders (excluded from v2 service)
+agents/
+voice/
+scheduler/
+orchestrator/
+dashboard/
+utils/
+
+# Planning docs & contracts
 New plan/
 docs/
+BASELINE.md
 
-# Eval results are generated artifacts, not source
-eval/results/
+# Eval harness & results
+eval/
 
-# Tests run in CI, not in the prod image
+# Tests & caches
 tests/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Runtime database files
-database/
+# Local databases & WAL files
 *.db
+*.db-journal
 *.db-wal
 *.db-shm
+aaqil.db
+chroma_db/
+job_cache.json

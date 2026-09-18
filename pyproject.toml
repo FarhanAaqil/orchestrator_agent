@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",  # line too long
+    "E402",  # module level import not at top of file
+    "F401",  # unused import
+    "F541",  # f-string without placeholder
+]

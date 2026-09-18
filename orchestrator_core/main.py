@@ -12,7 +12,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from orchestrator_core.config import get_settings
@@ -130,6 +130,7 @@ async def ssrf_violation_handler(request: Request, exc: SSRFViolationError):
 
 # ── Route registration ────────────────────────────────────────────────────────
 
+from orchestrator_core.dependencies import verify_bearer_token
 from orchestrator_core.routes import route as route_module
 from orchestrator_core.routes import dispatch as dispatch_module
 from orchestrator_core.routes import runs as runs_module
@@ -137,12 +138,14 @@ from orchestrator_core.routes import approvals as approvals_module
 from orchestrator_core.routes import pipeline as pipeline_module
 from orchestrator_core.routes import router_eval as router_eval_module
 
-app.include_router(route_module.router)
-app.include_router(dispatch_module.router)
-app.include_router(runs_module.router)
-app.include_router(approvals_module.router)
-app.include_router(pipeline_module.router)
-app.include_router(router_eval_module.router)
+auth_dependencies = [Depends(verify_bearer_token)]
+
+app.include_router(route_module.router, dependencies=auth_dependencies)
+app.include_router(dispatch_module.router, dependencies=auth_dependencies)
+app.include_router(runs_module.router, dependencies=auth_dependencies)
+app.include_router(approvals_module.router, dependencies=auth_dependencies)
+app.include_router(pipeline_module.router, dependencies=auth_dependencies)
+app.include_router(router_eval_module.router, dependencies=auth_dependencies)
 
 
 # ── Health check endpoint ─────────────────────────────────────────────────────
