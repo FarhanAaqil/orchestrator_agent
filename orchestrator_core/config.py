@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     database_path: str = "database/orchestrator.db"
     chroma_db_dir: str = "chroma_db"
     groq_api_key: Optional[str] = None
-    router_model: str = "qwen/qwen3.8-27b"
+    router_model: str = "openai/gpt-oss-120b"
     router_confidence_threshold: float = 0.6
     auth_token: Optional[str] = Field(
         default=None,

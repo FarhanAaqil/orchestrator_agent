@@ -187,9 +187,9 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
-    // ── Markdown Parser with Fallback ──
+    // ── Markdown Parser with Guaranteed Fallback ──
     function renderFormattedMarkdown(text) {
       if (!text) return '';
       try {
@@ -346,15 +346,24 @@
       );
     }
 
-    // ── VIEW 1: DISPATCH & AGENT STUDIO ──
+    // ── VIEW 1: DISPATCH CHATBOT STUDIO (ChatGPT Style) ──
     function DispatchView() {
       const [command, setCommand] = useState("");
       const [loading, setLoading] = useState(false);
-      const [result, setResult] = useState(null);
-      const [error, setError] = useState(null);
-      const [clarification, setClarification] = useState(null);
-      const [viewMode, setViewMode] = useState('formatted'); // 'formatted' | 'raw'
-      const [copied, setCopied] = useState(false);
+      const [viewModes, setViewModes] = useState({}); // { [msgId]: 'formatted' | 'raw' }
+      const [copiedId, setCopiedId] = useState(null);
+      const messagesEndRef = useRef(null);
+
+      const [messages, setMessages] = useState([
+        {
+          id: "welcome-1",
+          role: "assistant",
+          agent: "info_agent",
+          text: "👋 **Hello! Welcome to the Orchestrator Multi-Agent Chat.**\n\nI am connected to the autonomous agent cluster:\n* **ℹ️ Info Agent**: Farhan Aaqil's background, projects portfolio, research, and how this system works.\n* **💼 Career Agent**: Resume tailoring, cover letters, and interview preparation.\n* **🔬 Research Agent**: ArXiv retrieval, methodology synthesis, and IEEE checks.\n* **✍️ Growth Agent**: Tech articles for Dev.to / Hashnode and social devlogs.\n* **🔍 Critic Agent**: Objective rubric critique and scoring.\n\nAsk me anything or choose a quick prompt below to begin!",
+          time: "Just now"
+        }
+      ]);
+
       const [history, setHistory] = useState([
         { cmd: "Tell me about Farhan Aaqil's featured projects and research", agent: "info_agent", time: "Just now" },
         { cmd: "Tailor my resume for Machine Learning Engineer", agent: "career_agent", time: "Just now" },
@@ -371,41 +380,106 @@
         { label: "⚠️ Trigger Clarification (422)", cmd: "What should I do next?" }
       ];
 
-      const handleExecute = async (cmdOverride) => {
-        const cmdToRun = cmdOverride || command;
-        if (!cmdToRun.trim()) return;
+      // Auto-scroll chat to bottom
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [messages, loading]);
 
+      const handleExecute = async (cmdOverride) => {
+        const cmdToRun = (cmdOverride || command).trim();
+        if (!cmdToRun || loading) return;
+
+        // Immediately empty the input box!
+        setCommand("");
         setLoading(true);
-        setError(null);
-        setClarification(null);
+
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const userMsgId = Date.now();
+
+        // Append User message to stream
+        setMessages(prev => [
+          ...prev,
+          { id: userMsgId, role: "user", text: cmdToRun, time: nowTime }
+        ]);
 
         try {
           const data = await api.dispatch(cmdToRun);
-          setResult(data);
+          const assistantMsgId = Date.now() + 1;
+
+          setMessages(prev => [
+            ...prev,
+            {
+              id: assistantMsgId,
+              role: "assistant",
+              agent: data.agent,
+              text: data.output,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
           setHistory(prev => [{ cmd: cmdToRun, agent: data.agent, time: "Just now" }, ...prev.slice(0, 5)]);
         } catch (err) {
           if (err.isClarification) {
-            setClarification(err.detail || err);
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                role: "clarification",
+                reasoning: err.reasoning || err.detail,
+                candidates: err.candidates || [],
+                originalCommand: cmdToRun,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
           } else if (err.isCircuitOpen) {
-            setError(`Circuit Breaker OPEN: Service is temporarily unavailable or cooling down. ${err.detail || ''}`);
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                role: "error",
+                text: `Circuit Breaker OPEN: External service is temporarily cooling down. ${err.detail || ''}`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
           } else {
-            setError(err.message || "Execution failed.");
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                role: "error",
+                text: err.message || "Execution failed.",
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
           }
         } finally {
           setLoading(false);
         }
       };
 
-      const copyOutput = () => {
-        if (!result?.output) return;
-        navigator.clipboard.writeText(result.output);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+      const copyMessage = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
       };
 
-      const formattedHtml = useMemo(() => {
-        return renderFormattedMarkdown(result?.output || '');
-      }, [result?.output]);
+      const toggleViewMode = (msgId) => {
+        setViewModes(prev => ({
+          ...prev,
+          [msgId]: prev[msgId] === 'raw' ? 'formatted' : 'raw'
+        }));
+      };
+
+      const clearChat = () => {
+        setMessages([
+          {
+            id: "fresh-1",
+            role: "assistant",
+            agent: "info_agent",
+            text: "💬 **New Chat Session Started.** How can I assist you with agents, projects, or workflows today?",
+            time: "Just now"
+          }
+        ]);
+      };
 
       return (
         <div className="space-y-6">
@@ -413,35 +487,201 @@
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-silver-500/40 pb-5">
             <div>
               <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
-                <span>⚡</span> Dispatch & Agent Studio
+                <span>⚡</span> Dispatch & Agent Chat
               </h2>
               <p className="text-sm text-silver-800 mt-1">
-                Natural-language command classifier and agent execution console with zero-leakage safety barriers.
+                Conversational multi-agent assistant with automatic intent routing and safety guardrails.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-silver-800">Threshold:</span>
-              <span className="px-2.5 py-1 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
-                ≥ 0.60
-              </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={clearChat}
+                className="px-3 py-1.5 rounded-lg bg-white hover:bg-silver-100 border border-silver-300 text-xs font-mono text-silver-700 hover:text-silver-900 transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <span>🗑️</span>
+                <span>New Chat</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-silver-800">Threshold:</span>
+                <span className="px-2.5 py-1 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
+                  ≥ 0.60
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Main 2-Column Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Console (8 Cols) */}
-            <div className="lg:col-span-8 space-y-5">
-              {/* Command Input Box */}
-              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-accent-primary font-mono flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-accent-primary animate-ping" />
-                    Prompt Input Console
-                  </span>
-                  <span className="text-[11px] text-silver-700 font-mono">Press ↵ Enter to Dispatch</span>
+            {/* Left Conversational Chat Deck (8 Cols) */}
+            <div className="lg:col-span-8 flex flex-col bg-white border border-silver-400/80 rounded-2xl shadow-sm overflow-hidden min-h-[680px]">
+              
+              {/* Chat Messages Stream */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-6 max-h-[580px]">
+                {messages.map(m => {
+                  if (m.role === 'user') {
+                    return (
+                      <div key={m.id} className="flex flex-col items-end space-y-1">
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-silver-600 mr-1">
+                          <span>{m.time}</span>
+                          <span className="font-bold text-silver-800">You</span>
+                        </div>
+                        <div className="max-w-2xl bg-silver-900 text-white px-5 py-3.5 rounded-2xl rounded-tr-xs text-sm leading-relaxed shadow-sm font-sans whitespace-pre-wrap">
+                          {m.text}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (m.role === 'clarification') {
+                    return (
+                      <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
+                        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 shadow-sm space-y-3 w-full">
+                          <div className="flex items-center justify-between text-amber-900 font-bold text-sm">
+                            <span className="flex items-center gap-2">
+                              <span>⚠️</span>
+                              <span>Routing Clarification Needed (Confidence &lt; 60%)</span>
+                            </span>
+                            <span className="text-xs font-mono text-amber-700">{m.time}</span>
+                          </div>
+                          <p className="text-xs text-amber-800 font-mono">
+                            {m.reasoning || "Please choose which agent should fulfill your request:"}
+                          </p>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {(m.candidates || []).map(agent => (
+                              <button
+                                key={agent}
+                                onClick={() => handleExecute(`[For ${agent}] ${m.originalCommand}`)}
+                                className="px-3.5 py-2 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
+                              >
+                                <span>🎯 Route to:</span>
+                                <span className="underline">{agent}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (m.role === 'error') {
+                    return (
+                      <div key={m.id} className="flex flex-col items-start space-y-1 max-w-2xl">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm w-full">
+                          <span className="text-base text-red-600">⚠️</span>
+                          <div className="flex-1 space-y-1">
+                            <span className="font-bold text-red-700 uppercase tracking-wider block">Execution Notice</span>
+                            <p className="text-red-800">{m.text}</p>
+                          </div>
+                          <span className="text-[10px] text-red-500">{m.time}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Default: Assistant Message
+                  const isRaw = viewModes[m.id] === 'raw';
+
+                  return (
+                    <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
+                      {/* Assistant Header Capsule */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 w-full border-b border-silver-200 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs">
+                            ✓
+                          </span>
+                          <span className="text-xs font-mono font-bold text-silver-600 uppercase">Agent:</span>
+                          <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded bg-silver-900 text-white shadow-xs">
+                            {m.agent}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-silver-500">{m.time}</span>
+                          
+                          {/* Toggle Mode */}
+                          <div className="flex bg-silver-100 p-0.5 rounded-lg border border-silver-300 text-[11px]">
+                            <button
+                              onClick={() => toggleViewMode(m.id)}
+                              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                !isRaw ? 'bg-white text-silver-900 shadow-xs font-bold' : 'text-silver-600'
+                              }`}
+                            >
+                              ✨ Formatted
+                            </button>
+                            <button
+                              onClick={() => toggleViewMode(m.id)}
+                              className={`px-2 py-0.5 rounded-md font-medium font-mono transition-all ${
+                                isRaw ? 'bg-white text-silver-900 shadow-xs font-bold' : 'text-silver-600'
+                              }`}
+                            >
+                              📄 Raw
+                            </button>
+                          </div>
+
+                          {/* Copy Button */}
+                          <button
+                            onClick={() => copyMessage(m.id, m.text)}
+                            className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-medium transition-all flex items-center gap-1 ${
+                              copiedId === m.id
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold'
+                                : 'bg-silver-50 hover:bg-silver-100 border-silver-300 text-silver-700'
+                            }`}
+                          >
+                            <span>{copiedId === m.id ? '✓ Copied!' : '📋 Copy'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Content Body */}
+                      <div className="w-full bg-silver-50/70 border border-silver-200 rounded-2xl p-5 shadow-xs transition-all">
+                        {isRaw ? (
+                          <pre className="bg-slate-900 rounded-xl p-4 text-xs font-mono text-slate-100 whitespace-pre-wrap overflow-x-auto">
+                            {m.text}
+                          </pre>
+                        ) : (
+                          <div
+                            className="prose-output"
+                            dangerouslySetInnerHTML={{ __html: renderFormattedMarkdown(m.text) }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Loading / Thinking Indicator */}
+                {loading && (
+                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-silver-50 border border-silver-200 max-w-md animate-pulse">
+                    <span className="w-6 h-6 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" />
+                    <div>
+                      <span className="text-xs font-mono font-bold text-silver-800 block">Classifying & Routing...</span>
+                      <span className="text-[11px] text-silver-500 font-mono">Generating verified response via Groq...</span>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Bottom Conversational Dock */}
+              <div className="border-t border-silver-300 bg-white p-4 space-y-3">
+                {/* Quick-Prompt Suggestions Carousel */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+                  <span className="text-[11px] font-mono text-silver-500 flex-shrink-0">Suggestions:</span>
+                  {presets.slice(0, 4).map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleExecute(p.cmd)}
+                      disabled={loading}
+                      className="flex-shrink-0 px-2.5 py-1 rounded-full bg-silver-100 hover:bg-silver-200 border border-silver-300 text-silver-700 hover:text-silver-900 transition-all font-medium disabled:opacity-50"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
 
-                <div className="relative">
+                {/* ChatGPT-style Input Bar */}
+                <div className="relative flex items-center bg-silver-50 border border-silver-300 rounded-2xl p-2 shadow-inner focus-within:border-accent-primary focus-within:bg-white focus-within:ring-1 focus-within:ring-accent-primary transition-all">
                   <textarea
                     value={command}
                     onChange={e => setCommand(e.target.value)}
@@ -451,167 +691,41 @@
                         handleExecute();
                       }
                     }}
-                    placeholder="Enter your prompt or question (e.g., 'Tell me about Farhan Aaqil's projects', 'Tailor my resume')..."
-                    rows={3}
-                    className="w-full bg-silver-50 border border-silver-300 rounded-xl p-4 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none focus:border-accent-primary focus:bg-white focus:ring-1 focus:ring-accent-primary transition-all resize-none shadow-inner"
+                    placeholder="Type a message or prompt... (Press ↵ Enter to send, Shift+Enter for new line)"
+                    rows={2}
+                    className="flex-1 bg-transparent px-3 py-1.5 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none resize-none font-sans"
                   />
-                  <div className="absolute right-3 bottom-3.5 flex items-center gap-2">
+
+                  <div className="flex items-center gap-2 pr-2">
                     {command && (
                       <button
                         onClick={() => setCommand('')}
-                        className="text-xs text-silver-600 hover:text-silver-900 px-2 py-1 rounded transition-all"
+                        className="text-xs text-silver-500 hover:text-silver-800 px-2 py-1 rounded"
                       >
                         Clear
                       </button>
                     )}
+
                     <button
                       onClick={() => handleExecute()}
                       disabled={loading || !command.trim()}
-                      className="px-4 py-2 rounded-lg bg-accent-primary hover:bg-accent-hover text-white font-bold text-xs shadow-md shadow-accent-primary/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-9 h-9 rounded-xl bg-accent-primary hover:bg-accent-hover text-white flex items-center justify-center font-bold text-base shadow-md shadow-accent-primary/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      title="Send Message"
                     >
                       {loading ? (
-                        <>
-                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Routing...</span>
-                        </>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <>
-                          <span>Dispatch</span>
-                          <span>&rarr;</span>
-                        </>
+                        <span>↑</span>
                       )}
                     </button>
                   </div>
                 </div>
 
-                {/* Preset Prompts Chips */}
-                <div className="space-y-2 pt-1 border-t border-silver-200">
-                  <span className="text-[11px] font-mono text-silver-700 uppercase tracking-wider block">Quick-Start Commands:</span>
-                  <div className="flex flex-wrap gap-2">
-                    {presets.map((p, i) => (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          setCommand(p.cmd);
-                          handleExecute(p.cmd);
-                        }}
-                        className="px-2.5 py-1.5 rounded-lg bg-silver-100 hover:bg-silver-200 border border-silver-300 text-xs text-silver-800 hover:text-silver-950 transition-all text-left font-medium"
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex items-center justify-between text-[11px] font-mono text-silver-500 px-1">
+                  <span>Chatbot Powered by Multi-Agent Router</span>
+                  <span>Input auto-clears on send</span>
                 </div>
               </div>
-
-              {/* Error Alert */}
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm">
-                  <span className="text-base text-red-600">⚠️</span>
-                  <div className="flex-1 space-y-1">
-                    <span className="font-bold text-red-700 uppercase tracking-wider block">Execution Notice</span>
-                    <p className="text-red-800">{error}</p>
-                  </div>
-                  <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 font-bold">✕</button>
-                </div>
-              )}
-
-              {/* Clarification Prompt Card (422) */}
-              {clarification && (
-                <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
-                    <span>⚠️</span>
-                    <span>Clarification Needed (Confidence Below 60%)</span>
-                  </div>
-                  <p className="text-xs text-amber-800 font-mono">
-                    {clarification.reasoning || "The router could not definitively classify your intent. Please select the intended target agent:"}
-                  </p>
-                  <div className="flex flex-wrap gap-2.5 pt-2">
-                    {(clarification.candidates || []).map(agent => (
-                      <button
-                        key={agent}
-                        onClick={() => handleExecute(`[For ${agent}] ${command}`)}
-                        className="px-3.5 py-2 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
-                      >
-                        <span>🎯 Re-route to:</span>
-                        <span className="underline">{agent}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Formatted Convenient Output Deck */}
-              {result && (
-                <div className="bg-white rounded-2xl p-6 shadow-md border border-silver-400/80 space-y-5 transition-all">
-                  {/* Output Header Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-silver-200 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-base shadow-xs">
-                        ✓
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold uppercase tracking-wider text-silver-700">Dispatched Agent:</span>
-                          <span className="font-mono font-extrabold text-xs px-2.5 py-1 rounded-md bg-silver-900 text-white shadow-xs">
-                            {result.agent}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {/* View Mode Toggle: Formatted vs Raw */}
-                      <div className="flex bg-silver-100 p-1 rounded-lg border border-silver-300 text-xs">
-                        <button
-                          onClick={() => setViewMode('formatted')}
-                          className={`px-3 py-1 rounded-md font-medium transition-all ${
-                            viewMode === 'formatted'
-                              ? 'bg-white text-silver-900 shadow-xs font-bold'
-                              : 'text-silver-700 hover:text-silver-900'
-                          }`}
-                        >
-                          ✨ Formatted
-                        </button>
-                        <button
-                          onClick={() => setViewMode('raw')}
-                          className={`px-3 py-1 rounded-md font-medium font-mono transition-all ${
-                            viewMode === 'raw'
-                              ? 'bg-white text-silver-900 shadow-xs font-bold'
-                              : 'text-silver-700 hover:text-silver-900'
-                          }`}
-                        >
-                          📄 Raw
-                        </button>
-                      </div>
-
-                      {/* Copy Button */}
-                      <button
-                        onClick={copyOutput}
-                        className={`px-3.5 py-1.5 rounded-lg border text-xs font-medium transition-all flex items-center gap-1.5 ${
-                          copied
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold'
-                            : 'bg-silver-50 hover:bg-silver-100 border-silver-300 text-silver-800'
-                        }`}
-                      >
-                        <span>{copied ? '✓ Copied!' : '📋 Copy'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Body: Formatted Rich Text (NO raw symbols!) */}
-                  {viewMode === 'formatted' ? (
-                    <div
-                      className="prose-output bg-silver-50/70 rounded-xl p-6 border border-silver-200 max-h-[600px] overflow-y-auto shadow-inner"
-                      dangerouslySetInnerHTML={{ __html: formattedHtml }}
-                    />
-                  ) : (
-                    <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 text-xs font-mono text-slate-100 leading-relaxed whitespace-pre-wrap max-h-[600px] overflow-y-auto shadow-inner">
-                      {result.output}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Right Inspector Rail (4 Cols) */}
@@ -654,7 +768,7 @@
                   {history.map((h, i) => (
                     <button
                       key={i}
-                      onClick={() => { setCommand(h.cmd); handleExecute(h.cmd); }}
+                      onClick={() => handleExecute(h.cmd)}
                       className="w-full text-left p-2.5 rounded-xl bg-silver-50 hover:bg-silver-100 border border-silver-200 hover:border-accent-primary/50 transition-all space-y-1 block"
                     >
                       <div className="flex items-center justify-between text-[11px]">
@@ -1330,7 +1444,7 @@
       }, []);
 
       const navItems = [
-        { id: 'dispatch', label: 'Dispatch Studio', icon: '⚡' },
+        { id: 'dispatch', label: 'Dispatch Chat', icon: '⚡' },
         { id: 'pipelines', label: 'Pipelines', icon: '🚀' },
         { id: 'approvals', label: 'Approvals', icon: '🛡️', badge: pendingCount > 0 ? pendingCount : null },
         { id: 'eval', label: 'Benchmark', icon: '📊' },

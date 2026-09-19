@@ -88,7 +88,7 @@ def _call_llm(prompt: str) -> str:
                 {"role": "user", "content": prompt},
             ],
             temperature=0.6,
-            max_tokens=750,
+            max_tokens=2500,
         )
         return response.choices[0].message.content
     except Exception as exc:
