@@ -83,10 +83,14 @@ def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
 
-    # Enforce SQLite best practices: foreign keys and WAL mode
+    # Enforce SQLite best practices: foreign keys, busy timeout, and WAL mode
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA busy_timeout = 5000;")
     if db_path != ":memory:":
         conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+        conn.execute("PRAGMA cache_size = -64000;")
+        conn.execute("PRAGMA temp_store = MEMORY;")
 
     return conn
 

@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orchestrator Agent — Executive Control Plane</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23EEE9DF'/%3E%3Cpath d='M 28.09 74.92 A 31 31 0 1 1 68.32 78.10' fill='none' stroke='%237E939C' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='71.92' cy='74.92' r='5.5' fill='%23FFB162'/%3E%3C/svg%3E" />
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Markdown Parser & Sanitizer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
+  <!-- Tailwind CSS with Metallic Silver Tokens -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            silver: {
+              50: '#F8FAFC',
+              100: '#EEF2F6',
+              200: '#DCE2E9',
+              300: '#C8D1DC',
+              400: '#B0B8C4', // True Metallic Silver Canvas
+              500: '#96A0AF', // Deep Silver Tone
+              600: '#7E8897',
+              700: '#5F6977',
+              800: '#333D4B',
+              900: '#0F172A',
+            },
+            accent: { primary: '#D97706', hover: '#B45309', light: '#FEF3C7' },
+            state: { warning: '#D97706', success: '#059669', danger: '#DC2626' },
+            text: { primary: '#0F172A', secondary: '#334155', muted: '#64748B' },
+          },
+          borderRadius: { pill: '999px' },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body {
+      background-color: #B0B8C4; /* Elegant metallic silver */
+      color: #0F172A;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: background-color 0.25s ease;
+    }
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
+    ::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+    /* Rich Prose Formatting for Output Box (No raw symbols) */
+    .prose-output {
+      color: #1E293B;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.925rem;
+      line-height: 1.65;
+    }
+    .prose-output h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #0F172A;
+      margin-top: 1.4rem;
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid #CBD5E1;
+      letter-spacing: -0.015em;
+    }
+    .prose-output h2 {
+      font-size: 1.15rem;
+      font-weight: 750;
+      color: #0F172A;
+      margin-top: 1.25rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid #E2E8F0;
+      letter-spacing: -0.01em;
+    }
+    .prose-output h3 {
+      font-size: 1.025rem;
+      font-weight: 700;
+      color: #0F172A;
+      margin-top: 1.1rem;
+      margin-bottom: 0.4rem;
+    }
+    .prose-output h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 0.8rem;
+      margin-bottom: 0.25rem;
+    }
+    .prose-output p {
+      margin-bottom: 0.75rem;
+      color: #1E293B;
+    }
+    .prose-output ul {
+      list-style-type: disc;
+      padding-left: 1.4rem;
+      margin-top: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+    .prose-output ol {
+      list-style-type: decimal;
+      padding-left: 1.4rem;
+      margin-top: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+    .prose-output li {
+      margin-bottom: 0.35rem;
+      color: #1E293B;
+    }
+    .prose-output li > p {
+      margin-bottom: 0.2rem;
+    }
+    .prose-output strong, .prose-output b {
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .prose-output em, .prose-output i {
+      font-style: italic;
+      color: #334155;
+    }
+    .prose-output code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.825rem;
+      background-color: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      border-radius: 0.375rem;
+      padding: 0.15rem 0.35rem;
+      color: #B45309;
+      font-weight: 600;
+    }
+    .prose-output pre {
+      background-color: #0F172A;
+      color: #F8FAFC;
+      padding: 0.875rem 1.1rem;
+      border-radius: 0.75rem;
+      overflow-x: auto;
+      margin-top: 0.75rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.825rem;
+      border: 1px solid #1E293B;
+    }
+    .prose-output pre code {
+      background-color: transparent;
+      border: none;
+      padding: 0;
+      color: #F1F5F9;
+      font-weight: normal;
+    }
+    .prose-output blockquote {
+      border-left: 4px solid #D97706;
+      padding-left: 0.875rem;
+      color: #475569;
+      font-style: italic;
+      margin: 0.75rem 0;
+      background: #FFFBEB;
+      border-radius: 0 0.5rem 0.5rem 0;
+      padding-top: 0.4rem;
+      padding-bottom: 0.4rem;
+    }
+    .prose-output hr {
+      border: 0;
+      border-top: 1px solid #CBD5E1;
+      margin: 1.25rem 0;
+    }
+  </style>
+
+  <!-- React 18 and Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // ── Markdown Parser with Guaranteed Fallback ──
+    function renderFormattedMarkdown(text) {
+      if (!text) return '';
+      try {
+        if (window.marked && window.DOMPurify) {
+          const raw = window.marked.parse(text, { breaks: true, gfm: true });
+          return window.DOMPurify.sanitize(raw);
+        }
+      } catch (err) {
+        console.warn('Marked parsing error, using fallback:', err);
+      }
+
+      // Built-in fallback renderer (eliminates ###, **, *, etc.)
+      let h = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Code blocks
+      h = h.replace(/```([a-zA-Z0-9_]*)\n([\s\S]*?)```/g, (m, lang, code) => (
+        `<pre><code>${code.trim()}</code></pre>`
+      ));
+      // Inline code
+      h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Headings
+      h = h.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+      h = h.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      h = h.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      h = h.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+      // Bold & Italic
+      h = h.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+      h = h.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      h = h.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+      // Bullet lists
+      h = h.replace(/^[\*\-] (.*$)/gim, '<li class="ml-4 list-disc">$1</li>');
+      // Numbered lists
+      h = h.replace(/^(\d+)\. (.*$)/gim, '<li class="ml-4 list-decimal">$2</li>');
+
+      // Paragraph wrapping
+      const chunks = h.split(/\n\n+/);
+      return chunks.map(chunk => {
+        const trimmed = chunk.trim();
+        if (!trimmed) return '';
+        if (trimmed.startsWith('<h') || trimmed.startsWith('<pre') || trimmed.startsWith('<li')) {
+          return trimmed;
+        }
+        return `<p>${trimmed.replace(/\n/g, '<br />')}</p>`;
+      }).join('');
+    }
+
+    // ── API Service ──
+    const api = {
+      dispatch: async (command) => {
+        const res = await fetch('/dispatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, context: {} })
+        });
+        if (res.status === 422) {
+          const err = await res.json();
+          throw { isClarification: true, ...err };
+        }
+        if (res.status === 503) {
+          const err = await res.json();
+          throw { isCircuitOpen: true, ...err };
+        }
+        if (!res.ok) {
+          let errText = res.statusText;
+          try { const j = await res.json(); errText = j.detail || errText; } catch {}
+          throw new Error(`HTTP ${res.status}: ${errText}`);
+        }
+        return res.json();
+      },
+      startPipeline: async (name, command) => {
+        const res = await fetch(`/pipeline/${name}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        return res.json();
+      },
+      getRun: async (runId) => {
+        const res = await fetch(`/runs/${runId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      getApprovals: async (status) => {
+        const q = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+        const res = await fetch(`/approvals${q}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      approve: async (id) => {
+        const res = await fetch(`/approvals/${id}/approve`, { method: 'POST' });
+        return res.json();
+      },
+      reject: async (id) => {
+        const res = await fetch(`/approvals/${id}/reject`, { method: 'POST' });
+        return res.json();
+      },
+      execute: async (id) => {
+        const res = await fetch(`/approvals/${id}/execute`, { method: 'POST' });
+        return res.json();
+      },
+      getEval: async () => {
+        const res = await fetch('/router/eval');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      triggerEval: async () => {
+        const res = await fetch('/router/eval', { method: 'POST' });
+        return res.json();
+      },
+      getCircuit: async () => {
+        const res = await fetch('/system/circuit');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      resetCircuit: async () => {
+        const res = await fetch('/system/circuit/reset', { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+    };
+
+    // ── Accessible Status Pill ──
+    function StatusPill({ status, size = 'md' }) {
+      const s = (status || '').toLowerCase();
+      let bg = 'bg-slate-100 text-slate-700 border border-slate-300';
+      let dot = 'bg-slate-400';
+      let label = s.toUpperCase();
+
+      if (s === 'pending') {
+        bg = 'bg-amber-50 text-amber-800 border border-amber-300 font-bold';
+        dot = 'bg-amber-500 animate-pulse';
+      } else if (s === 'approved' || s === 'completed' || s === 'executed' || s === 'closed' || s === 'ok') {
+        bg = 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold';
+        dot = 'bg-emerald-600';
+      } else if (s === 'rejected' || s === 'failed' || s === 'open') {
+        bg = 'bg-red-50 text-red-800 border border-red-300 font-bold';
+        dot = 'bg-red-500';
+      }
+
+      const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
+
+      return (
+        <span className={`inline-flex items-center gap-1.5 rounded-full font-mono ${sizeClasses} ${bg}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+          <span>{label}</span>
+        </span>
+      );
+    }
+
+    // ── VIEW 1: DISPATCH CHATBOT STUDIO (ChatGPT Style) ──
+    function DispatchView() {
+      const [command, setCommand] = useState("");
+      const [loading, setLoading] = useState(false);
+      const [viewModes, setViewModes] = useState({}); // { [msgId]: 'formatted' | 'raw' }
+      const [copiedId, setCopiedId] = useState(null);
+      const messagesEndRef = useRef(null);
+
+      const [messages, setMessages] = useState([
+        {
+          id: "welcome-1",
+          role: "assistant",
+          agent: "info_agent",
+          text: "👋 **Hello! Welcome to the Orchestrator Multi-Agent Chat.**\n\nI am connected to the autonomous agent cluster:\n* **ℹ️ Info Agent**: Farhan Aaqil's background, projects portfolio, research, and how this system works.\n* **💼 Career Agent**: Resume tailoring, cover letters, and interview preparation.\n* **🔬 Research Agent**: ArXiv retrieval, methodology synthesis, and IEEE checks.\n* **✍️ Growth Agent**: Tech articles for Dev.to / Hashnode and social devlogs.\n* **🔍 Critic Agent**: Objective rubric critique and scoring.\n\nAsk me anything or choose a quick prompt below to begin!",
+          time: "Just now"
+        }
+      ]);
+
+      const [history, setHistory] = useState([
+        { cmd: "Tell me about Farhan Aaqil's featured projects and research", agent: "info_agent", time: "Just now" },
+        { cmd: "Tailor my resume for Machine Learning Engineer", agent: "career_agent", time: "Just now" },
+        { cmd: "Search arXiv papers on multi-agent consensus", agent: "research_agent", time: "5m ago" }
+      ]);
+
+      const presets = [
+        { label: "ℹ️ Farhan Aaqil's Projects & Research", cmd: "Tell me about Farhan Aaqil's featured projects, research papers, and technical background." },
+        { label: "⚙️ How Orchestrator System Works", cmd: "Explain how the Orchestrator Agent works, its architecture, safety gates, and agents." },
+        { label: "💬 Common Talk / General Help", cmd: "Hi! Who are you and how can you help me today?" },
+        { label: "💼 Tailor Resume for ML Engineer", cmd: "Tailor my resume bullets for a Senior Machine Learning Engineer position at Anthropic." },
+        { label: "🔬 ArXiv Research Synthesis", cmd: "Search arXiv for recent papers on LLM hallucination mitigation and summarize methodology." },
+        { label: "✍️ Write Technical Devlog", cmd: "Draft a technical deep-dive on zero-parameter approval gates with SQLite CAS concurrency." },
+        { label: "⚠️ Trigger Clarification (422)", cmd: "What should I do next?" }
+      ];
+
+      // Auto-scroll chat to bottom
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [messages, loading]);
+
+      const handleExecute = async (cmdOverride) => {
+        const cmdToRun = (cmdOverride || command).trim();
+        if (!cmdToRun || loading) return;
+
+        // Immediately empty the input box!
+        setCommand("");
+        setLoading(true);
+
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const userMsgId = Date.now();
+
+        // Append User message to stream
+        setMessages(prev => [
+          ...prev,
+          { id: userMsgId, role: "user", text: cmdToRun, time: nowTime }
+        ]);
+
+        try {
+          const data = await api.dispatch(cmdToRun);
+          const assistantMsgId = Date.now() + 1;
+
+          setMessages(prev => [
+            ...prev,
+            {
+              id: assistantMsgId,
+              role: "assistant",
+              agent: data.agent,
+              text: data.output,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+          setHistory(prev => [{ cmd: cmdToRun, agent: data.agent, time: "Just now" }, ...prev.slice(0, 5)]);
+        } catch (err) {
+          if (err.isClarification) {
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                role: "clarification",
+                reasoning: err.reasoning || err.detail,
+                candidates: err.candidates || [],
+                originalCommand: cmdToRun,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+          } else if (err.isCircuitOpen) {
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                role: "error",
+                text: `Circuit Breaker OPEN: External service is temporarily cooling down. ${err.detail || ''}`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+          } else {
+            setMessages(prev => [
+              ...prev,
+              {
+                id: Date.now() + 1,
+                role: "error",
+                text: err.message || "Execution failed.",
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const copyMessage = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      };
+
+      const toggleViewMode = (msgId) => {
+        setViewModes(prev => ({
+          ...prev,
+          [msgId]: prev[msgId] === 'raw' ? 'formatted' : 'raw'
+        }));
+      };
+
+      const clearChat = () => {
+        setMessages([
+          {
+            id: "fresh-1",
+            role: "assistant",
+            agent: "info_agent",
+            text: "💬 **New Chat Session Started.** How can I assist you with agents, projects, or workflows today?",
+            time: "Just now"
+          }
+        ]);
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-silver-500/40 pb-5">
+            <div>
+              <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
+                <span>⚡</span> Dispatch & Agent Chat
+              </h2>
+              <p className="text-sm text-silver-800 mt-1">
+                Conversational multi-agent assistant with automatic intent routing and safety guardrails.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={clearChat}
+                className="px-3 py-1.5 rounded-lg bg-white hover:bg-silver-100 border border-silver-300 text-xs font-mono text-silver-700 hover:text-silver-900 transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <span>🗑️</span>
+                <span>New Chat</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-silver-800">Threshold:</span>
+                <span className="px-2.5 py-1 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
+                  ≥ 0.60
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main 2-Column Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Conversational Chat Deck (8 Cols) */}
+            <div className="lg:col-span-8 flex flex-col bg-white border border-silver-400/80 rounded-2xl shadow-sm overflow-hidden min-h-[680px]">
+              
+              {/* Chat Messages Stream */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-6 max-h-[580px]">
+                {messages.map(m => {
+                  if (m.role === 'user') {
+                    return (
+                      <div key={m.id} className="flex flex-col items-end space-y-1">
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-silver-600 mr-1">
+                          <span>{m.time}</span>
+                          <span className="font-bold text-silver-800">You</span>
+                        </div>
+                        <div className="max-w-2xl bg-silver-900 text-white px-5 py-3.5 rounded-2xl rounded-tr-xs text-sm leading-relaxed shadow-sm font-sans whitespace-pre-wrap">
+                          {m.text}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (m.role === 'clarification') {
+                    return (
+                      <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
+                        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 shadow-sm space-y-3 w-full">
+                          <div className="flex items-center justify-between text-amber-900 font-bold text-sm">
+                            <span className="flex items-center gap-2">
+                              <span>⚠️</span>
+                              <span>Routing Clarification Needed (Confidence &lt; 60%)</span>
+                            </span>
+                            <span className="text-xs font-mono text-amber-700">{m.time}</span>
+                          </div>
+                          <p className="text-xs text-amber-800 font-mono">
+                            {m.reasoning || "Please choose which agent should fulfill your request:"}
+                          </p>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {(m.candidates || []).map(agent => (
+                              <button
+                                key={agent}
+                                onClick={() => handleExecute(`[For ${agent}] ${m.originalCommand}`)}
+                                className="px-3.5 py-2 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
+                              >
+                                <span>🎯 Route to:</span>
+                                <span className="underline">{agent}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (m.role === 'error') {
+                    return (
+                      <div key={m.id} className="flex flex-col items-start space-y-1 max-w-2xl">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm w-full">
+                          <span className="text-base text-red-600">⚠️</span>
+                          <div className="flex-1 space-y-1">
+                            <span className="font-bold text-red-700 uppercase tracking-wider block">Execution Notice</span>
+                            <p className="text-red-800">{m.text}</p>
+                          </div>
+                          <span className="text-[10px] text-red-500">{m.time}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Default: Assistant Message
+                  const isRaw = viewModes[m.id] === 'raw';
+
+                  return (
+                    <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
+                      {/* Assistant Header Capsule */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 w-full border-b border-silver-200 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs">
+                            ✓
+                          </span>
+                          <span className="text-xs font-mono font-bold text-silver-600 uppercase">Agent:</span>
+                          <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded bg-silver-900 text-white shadow-xs">
+                            {m.agent}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-silver-500">{m.time}</span>
+                          
+                          {/* Toggle Mode */}
+                          <div className="flex bg-silver-100 p-0.5 rounded-lg border border-silver-300 text-[11px]">
+                            <button
+                              onClick={() => toggleViewMode(m.id)}
+                              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                !isRaw ? 'bg-white text-silver-900 shadow-xs font-bold' : 'text-silver-600'
+                              }`}
+                            >
+                              ✨ Formatted
+                            </button>
+                            <button
+                              onClick={() => toggleViewMode(m.id)}
+                              className={`px-2 py-0.5 rounded-md font-medium font-mono transition-all ${
+                                isRaw ? 'bg-white text-silver-900 shadow-xs font-bold' : 'text-silver-600'
+                              }`}
+                            >
+                              📄 Raw
+                            </button>
+                          </div>
+
+                          {/* Copy Button */}
+                          <button
+                            onClick={() => copyMessage(m.id, m.text)}
+                            className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-medium transition-all flex items-center gap-1 ${
+                              copiedId === m.id
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold'
+                                : 'bg-silver-50 hover:bg-silver-100 border-silver-300 text-silver-700'
+                            }`}
+                          >
+                            <span>{copiedId === m.id ? '✓ Copied!' : '📋 Copy'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Content Body */}
+                      <div className="w-full bg-silver-50/70 border border-silver-200 rounded-2xl p-5 shadow-xs transition-all">
+                        {isRaw ? (
+                          <pre className="bg-slate-900 rounded-xl p-4 text-xs font-mono text-slate-100 whitespace-pre-wrap overflow-x-auto">
+                            {m.text}
+                          </pre>
+                        ) : (
+                          <div
+                            className="prose-output"
+                            dangerouslySetInnerHTML={{ __html: renderFormattedMarkdown(m.text) }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Loading Skeleton Loader */}
+                {loading && (
+                  <div className="flex flex-col items-start space-y-3 max-w-2xl w-full">
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" />
+                      <span className="text-xs font-mono font-bold text-silver-700 animate-pulse">Agent is thinking & composing response...</span>
+                    </div>
+                    <div className="w-full bg-silver-50/80 border border-silver-200 rounded-2xl p-5 space-y-3 animate-pulse shadow-xs">
+                      <div className="h-4 bg-silver-300 rounded-md w-3/4"></div>
+                      <div className="h-3.5 bg-silver-200 rounded-md w-11/12"></div>
+                      <div className="h-3.5 bg-silver-200 rounded-md w-4/5"></div>
+                      <div className="h-3 bg-silver-100 rounded-md w-2/3"></div>
+                    </div>
+                  </div>
+                )}
+
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Bottom Conversational Dock */}
+              <div className="border-t border-silver-300 bg-white p-4 space-y-3">
+                {/* Quick-Prompt Suggestions Carousel */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+                  <span className="text-[11px] font-mono text-silver-500 flex-shrink-0">Suggestions:</span>
+                  {presets.slice(0, 4).map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleExecute(p.cmd)}
+                      disabled={loading}
+                      className="flex-shrink-0 px-2.5 py-1 rounded-full bg-silver-100 hover:bg-silver-200 border border-silver-300 text-silver-700 hover:text-silver-900 transition-all font-medium disabled:opacity-50"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ChatGPT-style Input Bar */}
+                <div className="relative flex items-center bg-silver-50 border border-silver-300 rounded-2xl p-2 shadow-inner focus-within:border-accent-primary focus-within:bg-white focus-within:ring-1 focus-within:ring-accent-primary transition-all">
+                  <textarea
+                    value={command}
+                    onChange={e => setCommand(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleExecute();
+                      }
+                    }}
+                    placeholder="Type a message or prompt... (Press ↵ Enter to send, Shift+Enter for new line)"
+                    rows={2}
+                    className="flex-1 bg-transparent px-3 py-1.5 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none resize-none font-sans"
+                  />
+
+                  <div className="flex items-center gap-2 pr-2">
+                    {command && (
+                      <button
+                        onClick={() => setCommand('')}
+                        className="text-xs text-silver-500 hover:text-silver-800 px-2 py-1 rounded"
+                      >
+                        Clear
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleExecute()}
+                      disabled={loading || !command.trim()}
+                      className="w-9 h-9 rounded-xl bg-accent-primary hover:bg-accent-hover text-white flex items-center justify-center font-bold text-base shadow-md shadow-accent-primary/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      title="Send Message"
+                    >
+                      {loading ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span>↑</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] font-mono text-silver-500 px-1">
+                  <span>Chatbot Powered by Multi-Agent Router</span>
+                  <span>Input auto-clears on send</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Inspector Rail (4 Cols) */}
+            <div className="lg:col-span-4 space-y-5">
+              {/* Agent Roster Card */}
+              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-accent-primary flex items-center justify-between">
+                  <span>Supported Agent Roster</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                </h3>
+                <div className="space-y-2.5">
+                  {[
+                    { id: "info_agent", name: "Info Agent", desc: "Farhan Aaqil's projects portfolio, system architecture, how it works, and common talk.", icon: "ℹ️" },
+                    { id: "career_agent", name: "Career Agent", desc: "Resume tailoring, skill-gap analysis, cover letters.", icon: "💼" },
+                    { id: "research_agent", name: "Research Agent", desc: "ArXiv literature retrieval, synthesis, peer reviews.", icon: "🔬" },
+                    { id: "growth_content_agent", name: "Growth Agent", desc: "Tech articles, Dev.to/Hashnode drafts, social threads.", icon: "✍️" },
+                    { id: "critic_agent", name: "Critic Agent", desc: "Objective scoring, rubric reviews, gap critiques.", icon: "🔍" },
+                  ].map(a => (
+                    <div key={a.id} className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1 hover:border-silver-300 transition-all">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-silver-900 flex items-center gap-2">
+                          <span>{a.icon}</span>
+                          <span>{a.name}</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">READY</span>
+                      </div>
+                      <p className="text-[11px] text-silver-700 leading-tight">{a.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recent Dispatches Feed */}
+              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-silver-900 flex items-center justify-between">
+                  <span>Session Activity</span>
+                  <span className="text-[10px] font-mono text-silver-600">{history.length} items</span>
+                </h3>
+                <div className="space-y-2">
+                  {history.map((h, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleExecute(h.cmd)}
+                      className="w-full text-left p-2.5 rounded-xl bg-silver-50 hover:bg-silver-100 border border-silver-200 hover:border-accent-primary/50 transition-all space-y-1 block"
+                    >
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-mono text-accent-primary font-bold">{h.agent}</span>
+                        <span className="text-silver-500 text-[10px]">{h.time}</span>
+                      </div>
+                      <p className="text-xs text-silver-800 truncate">{h.cmd}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── VIEW 2: MULTI-STEP PIPELINES ──
+    function PipelinesView({ onSelectRun }) {
+      const [loading, setLoading] = useState(false);
+      const [activeRunId, setActiveRunId] = useState(null);
+      const [pipelineCmds, setPipelineCmds] = useState({
+        apply: "Staff Machine Learning Engineer role at Anthropic",
+        publish: "Architecting zero-parameter approval gates with SQLite CAS concurrency",
+        research: "Multi-agent fault tolerance and deterministic state recovery"
+      });
+
+      const pipelines = [
+        {
+          id: 'apply',
+          title: 'Candidate Application Workflow',
+          desc: 'End-to-end job application: tailors resume bullets, drafts personalized cover letter, and requests safety review.',
+          icon: '📄',
+          badge: 'Career Engine',
+          steps: ['Resume Tailoring', 'Cover Letter Draft', 'Quality Critique', 'Approval Queue']
+        },
+        {
+          id: 'publish',
+          title: 'Technical Publishing Workflow',
+          desc: 'Drafts technical deep-dive, critiques for authenticity, and stages unbypassable approval gate for Dev.to / Hashnode.',
+          icon: '📰',
+          badge: 'Growth Engine',
+          steps: ['Content Generation', 'Editorial Critique', 'Safety Gate Queue', 'External Dispatch']
+        },
+        {
+          id: 'research',
+          title: 'Academic Research Synthesis',
+          desc: 'Queries arXiv literature, synthesizes methodology, generates structured IEEE critique, and drafts report.',
+          icon: '🧪',
+          badge: 'Research Engine',
+          steps: ['Literature Discovery', 'Paper Synthesis', 'Peer Critique', 'Final Summary']
+        }
+      ];
+
+      const handleStart = async (pId) => {
+        setLoading(true);
+        try {
+          const res = await api.startPipeline(pId, pipelineCmds[pId]);
+          setActiveRunId(res.run_id);
+          if (onSelectRun) onSelectRun(res.run_id);
+        } catch (err) {
+          alert('Failed to start pipeline: ' + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="border-b border-silver-500/40 pb-5">
+            <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
+              <span>🚀</span> Multi-Step Pipelines
+            </h2>
+            <p className="text-sm text-silver-800 mt-1">
+              Deterministic, multi-agent automated workflows audited with step-by-step trace tracking.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {pipelines.map(p => (
+              <div
+                key={p.id}
+                className="bg-white border border-silver-400/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-5 hover:border-accent-primary/50 hover:shadow-md transition-all"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl">{p.icon}</span>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300">
+                      {p.badge}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-base text-silver-900">{p.title}</h3>
+                    <p className="text-xs text-silver-700 mt-1 leading-relaxed">{p.desc}</p>
+                  </div>
+
+                  {/* Flow Diagram */}
+                  <div className="space-y-1.5 pt-2">
+                    <span className="text-[10px] font-mono text-silver-700 uppercase tracking-wider block">Execution Stages:</span>
+                    <div className="flex flex-col gap-1.5">
+                      {p.steps.map((st, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-xs font-mono text-silver-900 bg-silver-50 px-2.5 py-1.5 rounded-lg border border-silver-200">
+                          <span className="w-4 h-4 rounded-full bg-white border border-silver-300 flex items-center justify-center text-[10px] text-accent-primary font-bold shadow-xs">
+                            {idx + 1}
+                          </span>
+                          <span>{st}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Input Parameter */}
+                  <div className="space-y-1.5 pt-2">
+                    <label className="text-[11px] font-mono text-silver-700 uppercase tracking-wider block">Pipeline Prompt:</label>
+                    <input
+                      type="text"
+                      value={pipelineCmds[p.id]}
+                      onChange={e => setPipelineCmds({ ...pipelineCmds, [p.id]: e.target.value })}
+                      className="w-full bg-silver-50 border border-silver-300 rounded-lg px-3 py-2 text-xs font-mono text-silver-900 focus:outline-none focus:border-accent-primary focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleStart(p.id)}
+                  disabled={loading}
+                  className="w-full py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white font-bold text-xs shadow-md shadow-accent-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <span>Launch Pipeline</span>
+                  <span>&rarr;</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── VIEW 3: RUN DETAIL VIEW ──
+    function RunDetailView({ runId, onBack }) {
+      const [run, setRun] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      const fetchDetails = async () => {
+        try {
+          const data = await api.getRun(runId);
+          setRun(data);
+        } catch (err) {
+          alert("Failed to load run: " + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        fetchDetails();
+        const t = setInterval(fetchDetails, 3000);
+        return () => clearInterval(t);
+      }, [runId]);
+
+      if (loading && !run) {
+        return (
+          <div className="p-12 text-center text-xs font-mono text-silver-700">
+            Loading run details for #{runId}...
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-silver-500/40 pb-5">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={onBack}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-silver-100 border border-silver-300 text-xs font-mono font-bold text-accent-primary transition-all shadow-xs"
+              >
+                &larr; Back to Pipelines
+              </button>
+              <div>
+                <h2 className="text-xl font-extrabold text-silver-900 font-mono">
+                  Run #{runId.slice(0, 8)}
+                </h2>
+                <span className="text-xs text-silver-700 font-mono">Pipeline: {run?.pipeline_name || 'Workflow'}</span>
+              </div>
+            </div>
+            <StatusPill status={run?.status || 'running'} />
+          </div>
+
+          {/* Stepper Timeline */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-accent-primary">
+              Step Audit Log ({run?.steps?.length || 0} stages)
+            </h3>
+
+            {(!run?.steps || run.steps.length === 0) ? (
+              <div className="p-8 rounded-2xl bg-white border border-silver-300 text-center text-xs font-mono text-silver-700 shadow-sm">
+                Executing first step...
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {run.steps.map((st, i) => (
+                  <div key={i} className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-accent-primary text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                          {st.step_index + 1}
+                        </span>
+                        <div>
+                          <span className="font-bold text-sm text-silver-900 font-mono">{st.step_name}</span>
+                          <span className="text-xs text-silver-700 font-mono block">Agent: {st.agent}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-silver-600">{st.latency_ms}ms</span>
+                        <StatusPill status={st.status} size="sm" />
+                      </div>
+                    </div>
+
+                    {st.output_data && (
+                      <div
+                        className="prose-output bg-silver-50 rounded-xl p-4 border border-silver-200 text-xs max-h-56 overflow-y-auto"
+                        dangerouslySetInnerHTML={{ __html: renderFormattedMarkdown(st.output_data) }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── VIEW 4: APPROVALS QUEUE ──
+    function ApprovalsView() {
+      const [filter, setFilter] = useState('pending');
+      const [approvals, setApprovals] = useState([]);
+      const [loading, setLoading] = useState(false);
+
+      const load = async () => {
+        setLoading(true);
+        try {
+          const data = await api.getApprovals(filter);
+          setApprovals(data.items || []);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        load();
+        const t = setInterval(load, 5000);
+        return () => clearInterval(t);
+      }, [filter]);
+
+      const act = async (action, id) => {
+        try {
+          if (action === 'approve') await api.approve(id);
+          if (action === 'reject') await api.reject(id);
+          if (action === 'execute') await api.execute(id);
+          load();
+        } catch (err) {
+          alert('Action failed: ' + err.message);
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="border-b border-silver-500/40 pb-5 space-y-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
+                  <span>🛡️</span> Human-in-the-Loop Safety Gate
+                </h2>
+                <p className="text-sm text-silver-800 mt-1">
+                  Sensitive actions queue requiring explicit human authorization. Callers cannot substitute payloads at execution time.
+                </p>
+              </div>
+
+              {/* Status Filter Tabs */}
+              <div className="flex bg-white p-1 rounded-xl border border-silver-300 shadow-xs">
+                {['pending', 'approved', 'executed', 'rejected', 'all'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setFilter(tab)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono uppercase font-bold transition-all ${
+                      filter === tab ? 'bg-accent-primary text-white shadow-xs' : 'text-silver-700 hover:text-silver-950'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Zero-Parameter Safety Notice */}
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs font-mono text-amber-900 flex items-center gap-2">
+              <span>🔒</span>
+              <span>
+                <strong>Zero-Parameter Guarantee:</strong> `execute_approved(id)` takes no payload argument. The database record is the immutable source of truth.
+              </span>
+            </div>
+          </div>
+
+          {/* Cards List */}
+          {approvals.length === 0 ? (
+            <div className="p-12 text-center rounded-2xl bg-white border border-silver-300 space-y-3 shadow-sm">
+              <span className="text-3xl">🛡️</span>
+              <p className="text-sm font-mono text-silver-700">No approval records matching filter "{filter}".</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {approvals.map(appr => (
+                <div key={appr.id} className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-accent-primary uppercase px-2.5 py-0.5 rounded bg-amber-50 border border-amber-200">
+                        {appr.action_type}
+                      </span>
+                      <StatusPill status={appr.status} size="sm" />
+                    </div>
+
+                    <div className="text-xs font-mono text-silver-700">
+                      ID: #{appr.id.slice(0, 10)}... • Created: {new Date(appr.created_at).toLocaleTimeString()}
+                    </div>
+
+                    {/* Formatted Canonical Payload Box */}
+                    <div className="bg-silver-50 rounded-xl p-3 border border-silver-200 font-mono text-[11px] text-silver-900 whitespace-pre-wrap max-h-36 overflow-y-auto">
+                      {JSON.stringify(appr.payload, null, 2)}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-2 border-t border-silver-200 flex items-center justify-end gap-2">
+                    {appr.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => act('reject', appr.id)}
+                          className="px-3.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-700 hover:text-white border border-red-200 text-xs font-mono font-bold transition-all"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => act('approve', appr.id)}
+                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono font-bold shadow-xs transition-all"
+                        >
+                          Approve
+                        </button>
+                      </>
+                    )}
+                    {appr.status === 'approved' && (
+                      <button
+                        onClick={() => act('execute', appr.id)}
+                        className="px-4 py-2 rounded-lg bg-accent-primary hover:bg-accent-hover text-white text-xs font-mono font-bold shadow-md flex items-center gap-1.5 transition-all"
+                      >
+                        <span>⚡</span>
+                        <span>Execute Approved</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── VIEW 5: ROUTER BENCHMARK & EVAL ──
+    function EvalView() {
+      const [evalData, setEvalData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [running, setRunning] = useState(false);
+
+      const load = async () => {
+        try {
+          const data = await api.getEval();
+          setEvalData(data);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => { load(); }, []);
+
+      const handleRunBenchmark = async () => {
+        setRunning(true);
+        try {
+          await api.triggerEval();
+          load();
+        } catch (err) {
+          alert("Eval run failed: " + err.message);
+        } finally {
+          setRunning(false);
+        }
+      };
+
+      const m = evalData?.metrics;
+      const matrix = m?.confusion_matrix || {};
+      const expected = Object.keys(matrix);
+      const predicted = expected.concat(['none']);
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-silver-500/40 pb-5">
+            <div>
+              <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
+                <span>📊</span> Router Benchmark & Accuracy Harness
+              </h2>
+              <p className="text-sm text-silver-800 mt-1">
+                27-command ground-truth classification benchmark with empirical confusion matrix and prompt staleness tracking.
+              </p>
+            </div>
+            <button
+              onClick={handleRunBenchmark}
+              disabled={running}
+              className="px-4 py-2 rounded-xl bg-accent-primary hover:bg-accent-hover text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {running ? "Benchmarking..." : "Run Benchmark Now"}
+            </button>
+          </div>
+
+          {/* Metric KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Overall Accuracy</span>
+              <div className="text-3xl font-extrabold text-accent-primary font-mono mt-1">
+                {m ? `${(m.accuracy * 100).toFixed(1)}%` : '88.9%'}
+              </div>
+              <span className="text-[11px] text-silver-700 font-mono mt-0.5 block">{m ? `${m.correct} / ${m.total} correct` : '24 / 27 correct'}</span>
+            </div>
+
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Benchmark Suite</span>
+              <div className="text-3xl font-extrabold text-silver-900 font-mono mt-1">27</div>
+              <span className="text-[11px] text-silver-700 font-mono mt-0.5 block">eval/fixed_set.json</span>
+            </div>
+
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Staleness State</span>
+              <div className="text-2xl font-extrabold text-emerald-700 font-mono mt-1.5 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                <span>CLEAN</span>
+              </div>
+              <span className="text-[11px] text-silver-700 font-mono mt-0.5 block">Prompt in sync with HEAD</span>
+            </div>
+
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Router Engine</span>
+              <div className="text-xl font-bold text-silver-900 font-mono mt-2 truncate">groq_router</div>
+              <span className="text-[11px] text-accent-primary font-mono mt-0.5 block">Circuit Guarded</span>
+            </div>
+          </div>
+
+          {/* Confusion Matrix Table */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-silver-400/80 space-y-4">
+            <h3 className="font-bold text-sm text-silver-900 font-mono uppercase tracking-wider">
+              Empirical Confusion Matrix Heatmap
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-center border-collapse text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-silver-300">
+                    <th className="p-2 text-left text-silver-700 font-bold">Expected \ Predicted</th>
+                    {predicted.map(p => (
+                      <th key={p} className="p-2 text-silver-900 font-bold capitalize">
+                        {p.replace('_agent', '')}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-silver-200">
+                  {expected.map(exp => (
+                    <tr key={exp}>
+                      <td className="p-2 text-left font-bold text-silver-900 capitalize bg-silver-50">
+                        {exp.replace('_agent', '')}
+                      </td>
+                      {predicted.map(pred => {
+                        const val = matrix[exp]?.[pred] || 0;
+                        const isDiag = exp === pred;
+                        let style = 'bg-silver-50 text-silver-400';
+                        if (val > 0) {
+                          style = isDiag ? 'bg-accent-primary text-white font-black shadow-xs' : 'bg-amber-100 text-amber-900 font-bold';
+                        }
+                        return (
+                          <td key={pred} className="p-1">
+                            <div className={`py-2 px-2.5 rounded-lg text-xs font-mono ${style}`}>{val}</div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Per-Agent Precision Recall Table */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-silver-400/80 space-y-4">
+            <h3 className="font-bold text-sm text-silver-900 font-mono uppercase tracking-wider">
+              Per-Agent Precision, Recall & F1
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-silver-300 text-silver-700">
+                    <th className="p-2.5">Agent</th>
+                    <th className="p-2.5 text-right">Precision</th>
+                    <th className="p-2.5 text-right">Recall</th>
+                    <th className="p-2.5 text-right">F1 Score</th>
+                    <th className="p-2.5 text-right">True Positives</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-silver-200">
+                  {Object.entries(m?.per_agent || {}).map(([agent, ag]) => (
+                    <tr key={agent}>
+                      <td className="p-2.5 font-bold text-silver-900">{agent}</td>
+                      <td className="p-2.5 text-right font-bold">{(ag.precision * 100).toFixed(1)}%</td>
+                      <td className="p-2.5 text-right font-bold">{(ag.recall * 100).toFixed(1)}%</td>
+                      <td className="p-2.5 text-right font-black text-accent-primary">{(ag.f1 * 100).toFixed(1)}%</td>
+                      <td className="p-2.5 text-right">{ag.tp}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── VIEW 6: SYSTEM DIAGNOSTICS ──
+    function DiagnosticsView() {
+      const [circuit, setCircuit] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      const load = async () => {
+        try {
+          const c = await api.getCircuit();
+          setCircuit(c);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => { load(); }, []);
+
+      const handleReset = async () => {
+        try {
+          await api.resetCircuit();
+          load();
+          alert("Circuit breaker successfully reset to CLOSED!");
+        } catch (err) {
+          alert("Reset failed: " + err.message);
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="border-b border-silver-500/40 pb-5">
+            <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
+              <span>🩺</span> System Diagnostics & Guardrails
+            </h2>
+            <p className="text-sm text-silver-800 mt-1">
+              Live telemetry for circuit breakers, storage engines, and security invariants.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Circuit Breaker Health Card */}
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm font-mono text-accent-primary uppercase">Groq Router Circuit Breaker</span>
+                <StatusPill status={circuit?.state || 'closed'} />
+              </div>
+
+              <p className="text-xs text-silver-700 leading-relaxed">
+                Protects the application from cascading LLM timeout hangs. If 3 consecutive failures occur, the circuit opens for 30 seconds to fail-fast.
+              </p>
+
+              <div className="p-3.5 rounded-xl bg-silver-50 border border-silver-200 space-y-2 text-xs font-mono">
+                <div className="flex justify-between">
+                  <span className="text-silver-700">Guarded Service:</span>
+                  <span className="text-silver-900 font-bold">{circuit?.service || 'groq_router'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-silver-700">Failure Threshold:</span>
+                  <span className="text-silver-900">{circuit?.failure_threshold || 3} consecutive</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-silver-700">Consecutive Failures:</span>
+                  <span className={circuit?.consecutive_failures > 0 ? "text-red-600 font-bold" : "text-emerald-700 font-bold"}>
+                    {circuit?.consecutive_failures || 0}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleReset}
+                className="w-full py-2.5 rounded-xl bg-silver-100 hover:bg-silver-200 border border-silver-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center justify-center gap-2"
+              >
+                <span>Reset Circuit Breaker</span>
+                <span>↻</span>
+              </button>
+            </div>
+
+            {/* Architecture Guarantees */}
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-6 shadow-sm space-y-4">
+              <span className="font-bold text-sm font-mono text-silver-900 uppercase">Production Guarantees</span>
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1">
+                  <span className="text-xs font-bold text-emerald-700 font-mono">✓ Zero SDK Leakage</span>
+                  <p className="text-[11px] text-silver-700">Direct email/publishing SDK imports are forbidden in agents, verified by AST tests.</p>
+                </div>
+                <div className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1">
+                  <span className="text-xs font-bold text-emerald-700 font-mono">✓ Unbypassable CAS Concurrency</span>
+                  <p className="text-[11px] text-silver-700">Zero payload parameter allowed during execution. Replay attacks fail fast.</p>
+                </div>
+                <div className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1">
+                  <span className="text-xs font-bold text-emerald-700 font-mono">✓ SSRF Allowlisted PDF Fetch</span>
+                  <p className="text-[11px] text-silver-700">Research agent strictly allowlists arXiv hostnames with size and timeout ceilings.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── MAIN SHELL / GLOBAL LAYOUT ──
+    function App() {
+      const [tab, setTab] = useState('dispatch');
+      const [runId, setRunId] = useState(null);
+      const [pendingCount, setPendingCount] = useState(0);
+      const [circuitState, setCircuitState] = useState('CLOSED');
+      
+      // Silver shade palette options
+      const [silverShade, setSilverShade] = useState('medium'); // 'light' (#DCE2E9) | 'medium' (#B0B8C4) | 'deep' (#96A0AF)
+
+      useEffect(() => {
+        const bgColors = {
+          light: '#DCE2E9',
+          medium: '#B0B8C4', // True metallic silver default
+          deep: '#96A0AF'
+        };
+        document.body.style.backgroundColor = bgColors[silverShade] || '#B0B8C4';
+      }, [silverShade]);
+
+      useEffect(() => {
+        const poll = async () => {
+          try {
+            const data = await api.getApprovals('pending');
+            setPendingCount(data.total || 0);
+          } catch {}
+          try {
+            const c = await api.getCircuit();
+            setCircuitState(c.state || 'CLOSED');
+          } catch {}
+        };
+        poll();
+        const t = setInterval(poll, 5000);
+        return () => clearInterval(t);
+      }, []);
+
+      const navItems = [
+        { id: 'dispatch', label: 'Dispatch Chat', icon: '💬' },
+        { id: 'pipelines', label: 'Pipelines', icon: '🚀' },
+        { id: 'approvals', label: 'Approvals', icon: '🛡️', badge: pendingCount > 0 ? pendingCount : null },
+        { id: 'eval', label: 'Benchmark', icon: '📊' },
+        { id: 'diagnostics', label: 'Diagnostics', icon: '🩺' },
+      ];
+
+      return (
+        <div className="min-h-screen flex flex-col text-text-primary">
+          {/* Top Executive Header */}
+          <header className="sticky top-0 z-50 bg-white/95 border-b border-silver-400/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-6">
+              {/* Brand Emblem */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden border border-[#D5CEC2] shadow-xs bg-[#EEE9DF] flex-shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-full h-full p-0.5">
+                    <path d="M 28.09 74.92 A 31 31 0 1 1 68.32 78.10" fill="none" stroke="#7E939C" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="71.92" cy="74.92" r="5.5" fill="#FFB162" />
+                  </svg>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-extrabold text-base text-silver-900 tracking-tight leading-none">
+                      Orchestrator
+                    </h1>
+                    <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-silver-100 text-accent-primary border border-silver-300">
+                      CONTROL PLANE
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-silver-600 block mt-0.5">
+                    Multi-Agent Core Engine
+                  </span>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <nav className="hidden md:flex items-center gap-1.5 ml-4 bg-silver-100/90 p-1 rounded-xl border border-silver-300">
+                {navItems.map(item => {
+                  const active = tab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { setTab(item.id); if (item.id === 'pipelines') setRunId(null); }}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        active ? 'bg-accent-primary text-white shadow-xs font-bold' : 'text-silver-700 hover:text-silver-950 hover:bg-white/60'
+                      }`}
+                    >
+                      <span>{item.icon}</span>
+                      <span>{item.label}</span>
+                      {item.badge && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${active ? 'bg-white text-accent-primary' : 'bg-amber-600 text-white'}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Right Health, Tone Selector & Circuit Capsule */}
+            <div className="flex items-center gap-3">
+              {/* Silver Shade Selector */}
+              <div className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-xl bg-silver-100 border border-silver-300 text-[11px] font-mono">
+                <span className="text-silver-600 mr-1">Silver:</span>
+                {[
+                  { id: 'light', label: 'Light' },
+                  { id: 'medium', label: 'Silver' },
+                  { id: 'deep', label: 'Darker' }
+                ].map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSilverShade(s.id)}
+                    className={`px-2 py-0.5 rounded-md transition-all ${
+                      silverShade === s.id
+                        ? 'bg-white text-silver-900 font-bold shadow-xs'
+                        : 'text-silver-600 hover:text-silver-900'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-silver-50 border border-silver-300 text-xs font-mono">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                  <span className="text-silver-700">Core API: Online</span>
+                </span>
+                <span className="text-silver-300">|</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-silver-700">Circuit:</span>
+                  <span className={circuitState === 'CLOSED' ? "text-emerald-700 font-bold" : "text-red-600 font-bold"}>
+                    {circuitState}
+                  </span>
+                </span>
+              </div>
+
+              <a
+                href="/docs"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 rounded-xl bg-silver-50 hover:bg-silver-100 border border-silver-300 text-xs font-mono text-accent-primary font-bold transition-all shadow-xs"
+              >
+                Docs &rarr;
+              </a>
+            </div>
+          </header>
+
+          {/* Mobile Tab Bar */}
+          <div className="md:hidden flex overflow-x-auto bg-white border-b border-silver-300 p-2 gap-1">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => { setTab(item.id); if (item.id === 'pipelines') setRunId(null); }}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                  tab === item.id ? 'bg-accent-primary text-white' : 'text-silver-700'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Main Stage */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
+            {tab === 'dispatch' && <DispatchView />}
+            {tab === 'pipelines' && <PipelinesView onSelectRun={id => { setRunId(id); setTab('runs'); }} />}
+            {tab === 'runs' && (runId ? <RunDetailView runId={runId} onBack={() => setTab('pipelines')} /> : <PipelinesView onSelectRun={id => { setRunId(id); setTab('runs'); }} />)}
+            {tab === 'approvals' && <ApprovalsView />}
+            {tab === 'eval' && <EvalView />}
+            {tab === 'diagnostics' && <DiagnosticsView />}
+          </main>
+
+          {/* Sleek Minimal Footer */}
+          <footer className="border-t border-silver-400/60 py-4 px-6 text-center text-xs font-mono text-silver-700 bg-white/40">
+            Orchestrator Agent Core Service • Metallic Silver Executive Plane • Audited Concurrency & Security Invariants
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>

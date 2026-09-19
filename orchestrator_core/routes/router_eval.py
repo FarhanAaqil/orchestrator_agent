@@ -15,7 +15,7 @@ import sqlite3
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel
 
 from orchestrator_core.storage.db import get_db_connection
@@ -137,8 +137,8 @@ async def run_eval(
         results = run_classification(dataset)
         metrics = compute_metrics(results)
         ph = prompt_hash()
-        results_file = write_results(metrics, results, _DATASET_PATH, dry_run=False)
-        append_index(metrics, results_file, dry_run=False)
+        results_file = write_results(metrics, results, _DATASET_PATH, no_save=False)
+        append_index(metrics, results_file, no_save=False)
 
         with db:
             db.execute(
@@ -169,9 +169,28 @@ async def run_eval(
         return EvalRunResponse(eval_id=eval_id, status="failed", message=str(exc))
 
 
+@router.get("/eval")
+async def get_latest_eval():
+    """Return the latest router eval run results and metrics."""
+    from eval.run_eval import check_staleness
+    results_dir = _EVAL_DIR / "results"
+    if not results_dir.exists():
+        return {"message": "No eval runs found"}
+    files = sorted(results_dir.glob("*.json"))
+    if not files:
+        return {"message": "No eval runs found"}
+    latest_file = files[-1]
+    data = json.loads(latest_file.read_text())
+    data["stale"] = check_staleness()
+    return data
+
+
 @router.get("/evals", response_model=EvalListResponse)
-async def list_evals():
-    """List all past eval run summaries from eval/index.json."""
+async def list_evals(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """List all past eval run summaries from eval/index.json with bounded pagination."""
     if not _INDEX_PATH.exists():
         return EvalListResponse(runs=[], total=0)
 
@@ -180,5 +199,7 @@ async def list_evals():
     except Exception:
         return EvalListResponse(runs=[], total=0)
 
-    runs = [EvalSummary(**e) for e in entries]
-    return EvalListResponse(runs=list(reversed(runs)), total=len(runs))
+    all_runs = [EvalSummary(**e) for e in reversed(entries)]
+    total = len(all_runs)
+    paginated_runs = all_runs[offset : offset + limit]
+    return EvalListResponse(runs=paginated_runs, total=total)

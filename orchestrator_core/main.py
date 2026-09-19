@@ -10,10 +10,12 @@ import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from orchestrator_core.config import get_settings
 from orchestrator_core.storage.db import get_db, run_migrations
@@ -56,9 +58,12 @@ settings = get_settings()
 app = FastAPI(
     title="Orchestrator Agent Core API",
     version=settings.app_version,
-    description="v2 Execution engine, approval gate, and multi-agent pipeline orchestrator.",
+    description="Execution engine, approval gate, and multi-agent pipeline orchestrator.",
     lifespan=lifespan,
 )
+
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ── Structured request logging middleware ─────────────────────────────────────
@@ -155,3 +160,38 @@ async def health_check():
     """Health check confirming service status, version, and environment."""
     s = get_settings()
     return {"status": "ok", "version": s.app_version, "environment": s.environment}
+
+
+@app.get("/system/circuit", tags=["System"])
+async def system_circuit():
+    """Diagnostic endpoint to inspect the router circuit breaker status."""
+    from orchestrator_core.core.router import get_circuit_status
+    return get_circuit_status()
+
+
+@app.post("/system/circuit/reset", tags=["System"])
+async def system_circuit_reset():
+    """Administrative endpoint to manually reset the router circuit breaker."""
+    from orchestrator_core.core.router import reset_circuit_breaker, get_circuit_status
+    reset_circuit_breaker()
+    return {"status": "ok", "message": "Circuit breaker reset to CLOSED", "circuit": get_circuit_status()}
+
+
+
+# ── Static UI / Frontend Serving ──────────────────────────────────────────────
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+INDEX_HTML = FRONTEND_DIR / "index.html"
+
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/ui", include_in_schema=False)
+async def serve_ui():
+    """Serve the standalone React 18 / MP072 control plane dashboard."""
+    if INDEX_HTML.exists():
+        return FileResponse(INDEX_HTML)
+    return JSONResponse(status_code=404, content={"error": "UI index.html not found"})
+

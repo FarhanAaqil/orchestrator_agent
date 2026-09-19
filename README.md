@@ -1,333 +1,272 @@
-# Aaqil - Personal AI Chief of Staff
+<p align="center">
+  <img src="docs/logo.svg" width="92" height="92" alt="Orchestrator Agent Logo" />
+</p>
 
-> **Status (2026-09-13):** Active v2 rewrite in progress.
-> The current codebase is the original v1 implementation. The v2 refactor is being
-> built in `orchestrator_core/` as a standalone FastAPI service with a measured router,
-> an unbypassable approval gate, a full test suite, and CI. This README will be
-> rewritten in Phase 5 once every claim in it can be backed by a passing test.
-> See `New plan/01-PRD.md` and `BASELINE.md` for the current rewrite scope and status.
+# Orchestrator Agent
 
-Aaqil is a Python-based multi-agent assistant that routes natural-language commands to specialized agents for career planning, job search, research writing, content creation, GitHub support, email drafting, daily briefings, and project tracking.
+[![CI](https://github.com/FarhanAaqil/orchestrater_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/FarhanAaqil/orchestrater_agent/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-The project uses a Streamlit chat interface, Groq-hosted LLM calls, ChromaDB memory, SQLite persistence, browser automation, web search, ArXiv search, voice input/output, and an APScheduler background worker.
+A production-grade, audited multi-agent orchestration service built on FastAPI. Orchestrator Agent routes natural language instructions to specialized agents with a mathematically measured routing confidence harness, an unbypassable human-in-the-loop approval gate, fail-fast circuit breakers, and zero SDK leakage into untrusted modules.
 
-## What It Does
+---
 
-- Routes user requests to the right specialist agent through an LLM router.
-- Runs multi-step pipelines for job applications, content publishing, and research submissions.
-- Keeps vector memory in ChromaDB so agents can recall previous outputs.
-- Tracks jobs, projects, tasks, goals, skills, certificates, papers, content, and emails in SQLite.
-- Starts a background scheduler for briefings, job search, GitHub checks, AI news, weekly reports, and reminders.
-- Provides a Streamlit dashboard with chat, quick actions, approvals, notifications, and optional voice response.
+## Visual Demo & Interface Screenshots
 
-## Main Components
+### 1. Conversational Chatbot & Dispatch Console
+*ChatGPT-style conversational interface with live auto-scroll, prompt pill suggestions, auto-clearing input dock, and formatted markdown output.*
 
-| Area | Files | Purpose |
-| --- | --- | --- |
-| Streamlit UI | `dashboard/app.py` | Chat interface, quick actions, approvals tab, notification display, voice controls |
-| Orchestrator | `orchestrator/master.py`, `orchestrator/router.py`, `orchestrator/pipeline.py` | Agent initialization, request routing, approval queue, multi-agent workflows |
-| Agents | `agents/*.py` | Specialist agents for GitHub, LinkedIn, jobs, projects, career, content, research, email, briefings, and critique |
-| Memory | `memory/chroma_store.py` | Persistent ChromaDB collections for agent memory |
-| Database | `database/tracker.py` | SQLite schema and helper functions |
-| Scheduler | `scheduler/background.py` | APScheduler jobs and in-app notifications |
-| Utilities | `utils/web_search.py` | DuckDuckGo web/news search, ArXiv search, page fetching |
-| Voice | `voice/voice_handler.py` | Speech recognition and text-to-speech |
-| Config | `config.py` | Environment loading, model name, Chroma path, agent descriptions |
+![Conversational Chatbot](docs/screenshots/chat_demo.png)
 
-## Agents
+### 2. Human-in-the-Loop Approval Gate
+*Immutable audit log and compare-and-set (CAS) state machine preventing unauthorized external actions and payload tampering.*
 
-| Agent | Module | Capabilities |
-| --- | --- | --- |
-| Orchestrator | `orchestrator/master.py` | Stores incoming tasks, triggers pipelines, routes normal commands, manages approvals |
-| GitHub Agent | `agents/github_agent.py` | Lists repos, generates READMEs, creates commit messages, summarizes GitHub profile |
-| LinkedIn Agent | `agents/linkedin_agent.py` | Scrapes LinkedIn job listings, drafts connection requests, outreach, follow-ups, and job analyses |
-| Job Agent | `agents/job_agent.py` | Scrapes Internshala and Wellfound, filters/ranks roles, stores matches, drafts cover letters |
-| Project Manager Agent | `agents/project_manager_agent.py` | Tracks projects, tasks, goals, sprint plans, weekly reports, and next-action suggestions |
-| Career Agent | `agents/career_agent.py` | Tracks skills/certificates/milestones, tailors resumes, analyzes skill gaps, prepares interviews |
-| Growth Agent | `agents/growth_agent.py` | Generates LinkedIn posts, Twitter/X threads, Hashnode/Dev.to blogs, devlogs, SEO metadata, content calendars |
-| Research Agent | `agents/research_agent.py` | Searches ArXiv, drafts long-form research papers, finds journals, checks predatory journals, drafts submission material |
-| Email Agent | `agents/email_agent.py` | Drafts recruiter, application, follow-up, and publisher emails; sends approved email through Gmail SMTP |
-| Briefing Agent | `agents/briefing_agent.py` | Builds morning briefings, quick status reports, AI news summaries, and GitHub activity summaries |
-| Critic Agent | `agents/critic_agent.py` | Silently scores and improves emails, cover letters, posts, papers, and job matches |
+![Approval Gate](docs/screenshots/approvals_demo.png)
 
-## Pipelines
+### 3. Multi-Agent Pipeline Execution
+*Live telemetry tracing each pipeline step with latency, inputs, outputs, and deterministic error handling.*
 
-Pipelines are handled by `orchestrator/pipeline.py` and always queue sensitive actions for approval before sending email or publishing content.
+![Pipeline Execution](docs/screenshots/pipelines_demo.png)
 
-### Apply Pipeline
+### 4. Router Benchmark & Confusion Matrix
+*Empirical 27-point routing evaluation harness measuring intent boundary classification and prompt drift.*
 
-```text
-apply pipeline <company>, <role>, <job description>, <recruiter email>
+![Router Benchmark](docs/screenshots/benchmark_demo.png)
+
+### 5. Diagnostics & Circuit Breaker Monitor
+*Real-time circuit breaker health metrics, consecutive failure counters, and manual administrative reset controls.*
+
+![System Diagnostics](docs/screenshots/diagnostics_demo.png)
+
+---
+
+## The Problem
+
+Most multi-agent frameworks suffer from three systemic architectural flaws:
+1. **Unmeasured Routing**: Systems claim to route commands intelligently, but provide no empirical benchmark or confusion matrix proving classification accuracy or boundary discrimination.
+2. **Bypassable Safety & Payload Substitution**: Human-in-the-loop gates frequently allow callers or compromised subagents to submit arbitrary payloads during the execution phase, bypassing what was originally reviewed.
+3. **SDK & Side-Effect Leakage**: Third-party API and messaging SDKs (`smtplib`, publishing clients) are scattered across agent prompts and tool definitions, risking unauthorized external side-effects whenever an LLM hallucinates.
+
+Orchestrator Agent solves these vulnerabilities at the API and database boundary.
+
+---
+
+## Core Guarantees & Architecture
+
+```
+                    [ Client / API Caller ]
+                               │
+               Bearer Token Authentication Barrier
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+       /route & /dispatch            /pipeline/{name}
+                │                             │
+       LLM Router (Groq)              Pipeline Engine
+       ┌─────────────────┐           ┌────────────────┐
+       │ Circuit Breaker │           │ Step Execution │
+       │ (Fail-Fast 30s) │           │ Audit Recorder │
+       └─────────────────┘           └────────────────┘
+                │                             │
+    Confidence >= 0.60?                       ▼
+    ┌───────────┴───────────┐         Queues Sensitive Action
+    │ Yes                   │ No              │
+    ▼                       ▼                 ▼
+Agent Dispatch       Clarification   ┌───────────────────────┐
+(Career/Research/    Needed (422)    │ Unbypassable Gate     │
+ Growth/Critic)                      │ (approvals table)     │
+                                     └───────────────────────┘
+                                              │
+                                    Human Review: approve()
+                                              │
+                                     execute_approved(id)
+                                    [CAS Atomic Claim Lock]
+                                              │
+                                              ▼
+                                    Isolated SDK Executor
+                                    (_dispatch_action only)
 ```
 
-Flow:
+### 1. Unbypassable Approval Gate
+- **Strict Zero-Parameter Contract**: [`execute_approved(approval_id, db)`](file:///orchestrator_core/core/approval_gate.py) takes **no payload argument**. Callers cannot supply or substitute a payload at execution time; execution loads strictly from the canonical immutable database record.
+- **Compare-And-Set (CAS) Concurrency**: Execution claims race on `UPDATE approvals SET status = 'executing' WHERE id = ? AND status = 'approved'`. Exactly one thread claims the execution; concurrent requests fail fast with `ApprovalClaimConflictError`.
+- **Verified by Tests**: Verified by [`tests/test_approval_gate.py`](file:///tests/test_approval_gate.py) and [`tests/test_approval_concurrency.py`](file:///tests/test_approval_concurrency.py).
 
-1. Searches the web for company context.
-2. Runs skill-gap analysis when a job description is provided.
-3. Generates a tailored cover letter.
-4. Drafts an application email.
-5. Runs the critic pass.
-6. Queues the email for approval.
+### 2. Strict SDK Isolation (Zero Leakage)
+- External side-effect SDKs (`smtplib`, `hashnode`, `devto`) are forbidden across all agent definitions.
+- All dispatching is isolated exclusively to `_dispatch_action()` in [`orchestrator_core/core/approval_gate.py`](file:///orchestrator_core/core/approval_gate.py).
+- **Verified by Tests & CI**: Enforced at build time via AST inspection in [`tests/test_no_sdk_leakage.py`](file:///tests/test_no_sdk_leakage.py) and GitHub Actions CI grep checks.
 
-### Publish Pipeline
+### 3. Circuit-Breaker Protected Router
+- LLM routing calls pass through a state-machine [`CircuitBreaker`](file:///orchestrator_core/core/circuit_breaker.py).
+- Three consecutive external failures trip the breaker to `OPEN` for 30 seconds, preventing cascading timeout hangs and failing fast with `CircuitOpenError` (HTTP 503).
+- Verified by [`tests/test_circuit_breaker.py`](file:///tests/test_circuit_breaker.py).
 
-```text
-publish pipeline <project>, <details>
+---
+
+## Router Evaluation & Accuracy Benchmark
+
+Router accuracy is continuously measured against a curated 27-command ground-truth dataset ([`eval/fixed_set.json`](file:///eval/fixed_set.json)) containing standard and ambiguous intent boundaries:
+
+- **Overall Accuracy**: **88.9%** (24/27 commands cleanly classified)
+- **Staleness Tracking**: Eval reports verify prompt hashing against deployed versions to prevent silent prompt drift.
+
+### Confusion Matrix
+
+```
+              career  research    growth    critic      none
+------------------------------------------------------------
+    career         8         0         0         0         0
+  research         0         6         0         1         0
+    growth         0         0         6         0         1
+    critic         0         0         0         4         1
 ```
 
-Flow:
+### Per-Agent Metrics
 
-1. Generates a blog post.
-2. Generates a LinkedIn post.
-3. Generates a Twitter/X thread.
-4. Runs critic improvements where configured.
-5. Queues content for approval.
+| Agent | Precision | Recall | F1-Score | Scope |
+|---|---|---|---|---|
+| `career_agent` | 1.00 | 1.00 | 1.00 | Resume tailoring, skill-gap analysis, interview prep, cover letters |
+| `research_agent` | 1.00 | 0.86 | 0.92 | ArXiv search, paper drafting, journal ranking, predatory check |
+| `growth_content_agent` | 1.00 | 0.86 | 0.92 | Technical blog drafting, Twitter/X threads, devlogs, content calendars |
+| `critic_agent` | 0.80 | 0.80 | 0.80 | Objective critique and scoring for resumes, papers, and content |
 
-### Research Pipeline
+*Generated via [`eval/run_eval.py`](file:///eval/run_eval.py) and rendered with [`eval/render_confusion_matrix.py`](file:///eval/render_confusion_matrix.py).*
 
-```text
-research pipeline <project>, <description>, <target journal>
-```
+---
 
-Flow:
+## Supported vs. Experimental Agents
 
-1. Searches ArXiv and web sources for related work.
-2. Generates a structured IEEE-style paper draft.
-3. Recommends journals and conferences.
-4. Drafts a submission email if a target journal is provided.
-5. Queues submission email for approval.
+To maintain zero hallucination and strict security guarantees, legacy unverified scraping modules have been moved to `experimental/` with explicit boundary disclaimers:
 
-## Background Schedule
+| Agent / Module | Status | Location | Justification / Boundary |
+|---|---|---|---|
+| **Career Agent** | Supported | [`orchestrator_core/agents/career_agent.py`](file:///orchestrator_core/agents/career_agent.py) | Fully deterministic LLM prompts; resume tailoring and gap analysis. |
+| **Research Agent** | Supported | [`orchestrator_core/agents/research_agent.py`](file:///orchestrator_core/agents/research_agent.py) | ArXiv paper drafting and academic journal suggestions. |
+| **Growth Agent** | Supported | [`orchestrator_core/agents/growth_content_agent.py`](file:///orchestrator_core/agents/growth_content_agent.py) | Tech writing; publish actions gated behind approvals. |
+| **Critic Agent** | Supported | [`orchestrator_core/agents/critic_agent.py`](file:///orchestrator_core/agents/critic_agent.py) | Scoring and improvement feedback. |
+| **Info Agent** | Supported | [`orchestrator_core/agents/info_agent.py`](file:///orchestrator_core/agents/info_agent.py) | Farhan Aaqil's portfolio, system architecture documentation, and general conversational talk. |
+| **LinkedIn Agent** | Quarantined | [`experimental/linkedin_agent/`](file:///experimental/linkedin_agent/) | Dependent on fragile DOM scraping; prohibited in core API. |
+| **Job Search Agent** | Quarantined | [`experimental/job_search_agent/`](file:///experimental/job_search_agent/) | Unofficial job board endpoints; violates stability guarantees. |
+| **GitHub Agent** | Quarantined | [`experimental/github_agent/`](file:///experimental/github_agent/) | Direct repository mutations quarantined outside approval gate. |
+| **Project Manager** | Quarantined | [`experimental/project_manager_agent/`](file:///experimental/project_manager_agent/) | Unverified state tracking; slated for future sprint. |
+| **Voice I/O** | Quarantined | [`experimental/voice_io/`](file:///experimental/voice_io/) | PyAudio/hardware dependencies incompatible with lean containers. |
 
-The scheduler starts when `orchestrator.master` is imported by the Streamlit app.
+---
 
-| Time | Job |
-| --- | --- |
-| 8:00 AM | Generate morning briefing |
-| 10:00 AM | Search Internshala for ML and AI internships |
-| 6:00 PM | Check GitHub activity |
-| Every 4 hours | Fetch AI/ML news |
-| Sunday 9:00 PM | Generate weekly reflection/report |
-| 9:00 AM and 3:00 PM | Remind about high-priority tasks |
+## Production Deployment: Load Balancer, Reverse Proxy & CDN
 
-Notifications are stored in memory for the current running process and shown in the Streamlit UI.
+Orchestrator Agent includes production configurations for high-availability clustering, edge reverse proxying, rate-limiting, and CDN caching.
 
-## Data Storage
-
-| Path | Purpose |
-| --- | --- |
-| `aaqil.db` | Main SQLite database used by `database/tracker.py` |
-| `chroma_db/` | Persistent ChromaDB vector memory |
-| `.env` | Local secrets and API credentials |
-| `__pycache__/` | Python runtime cache files |
-
-The repo currently contains runtime data files. Treat `.env`, database files, and `chroma_db/` as local/private state if you publish or share this project.
-
-## Setup
-
-Run these commands from the project root.
+### 1. Nginx Reverse Proxy & Load Balancer
+A production-grade [`nginx/nginx.conf`](nginx/nginx.conf) is provided with:
+- **Load Balancing**: `least_conn` distribution across backend worker replicas.
+- **Failover & Passive Health Probes**: `max_fails=3 fail_timeout=10s` with persistent TCP reuse (`keepalive 32`).
+- **Rate-Limiting**: 30 req/s with burst control for `/route` and `/dispatch`.
+- **Edge Microcaching**: 7-day cache with `stale-while-revalidate` for `/static/` assets.
+- **Streaming Support**: `proxy_buffering off` for unbuffered LLM response delivery.
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
+# Launch load-balanced multi-container stack with Nginx
+docker compose up -d
+```
+
+### 2. Caddyfile (Automatic SSL & HTTP/3)
+For zero-config deployments with automatic Let's Encrypt certificates and HTTP/3 support, use the included [`Caddyfile`](Caddyfile):
+```bash
+caddy run
+```
+
+### 3. Edge CDN Caching (Cloudflare / Fastly)
+Comprehensive edge rules, origin cache-control policies, and Cloudflare configuration guidelines are documented in [`docs/CDN_AND_LOAD_BALANCER.md`](docs/CDN_AND_LOAD_BALANCER.md).
+
+---
+
+## Quickstart & Setup
+
+### Prerequisites
+- Python 3.11+
+- Groq Cloud API Key ([console.groq.com](https://console.groq.com))
+
+### 1. Installation
+```bash
+git clone https://github.com/FarhanAaqil/orchestrater_agent.git
+cd orchestrater_agent
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
-playwright install chromium
 ```
 
-On macOS/Linux, activate the virtual environment with:
+### 2. Configure Environment
+```bash
+cp .env.example .env
+# Edit .env and supply your GROQ_API_KEY and optional AUTH_TOKEN
+```
+
+### 3. Run Service
+```bash
+uvicorn orchestrator_core.main:app --host 0.0.0.0 --port 8000 --reload
+```
+- **React 18 Control Plane Dashboard**: Open [http://localhost:8000/](http://localhost:8000/) (or `/ui`) in your browser to access the conversational chat console, pipelines, approvals queue, and router eval.
+- **Interactive OpenAPI Documentation**: Available at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+---
+
+## API Reference
+
+### Authentication
+All routes except `GET /health` accept Bearer authentication if `AUTH_TOKEN` is configured:
+```http
+Authorization: Bearer <your_token>
+```
+
+### Key Endpoints
+
+| Method | Path | Description | Request / Response Sample |
+|---|---|---|---|
+| `GET` | `/health` | System health check | `{"status": "ok", "version": "1.0.0"}` |
+| `POST` | `/route` | Classify natural language command | Body: `{"command": "Tailor resume"}`<br>Returns: `RouterResult` or `ClarificationNeeded` (422) |
+| `POST` | `/dispatch` | Classify and immediately execute | Body: `{"command": "..."}`<br>Returns: `AgentResult` |
+| `POST` | `/pipeline/{name}` | Execute named multi-step pipeline | Supported: `apply`, `publish`, `research`<br>Returns: `{"run_id": "...", "status": "running"}` |
+| `GET` | `/runs` | List execution runs with pagination | Query: `limit=20&offset=0`<br>Returns: `RunListResponse` |
+| `GET` | `/runs/{run_id}` | Retrieve step audit log for pipeline run | Returns: Full step logs with latencies & outputs |
+| `POST` | `/approvals` | Queue sensitive action for review | Body: `{"action_type": "...", "payload": {...}}` |
+| `GET` | `/approvals` | List queued approvals with pagination | Query: `status=pending&limit=50`<br>Returns: `ApprovalListResponse` |
+| `POST` | `/approvals/{id}/approve` | Grant approval | Transitions status: `pending` → `approved` |
+| `POST` | `/approvals/{id}/reject` | Deny approval | Transitions status: `pending` → `rejected` |
+| `POST` | `/approvals/{id}/execute` | Execute approved action | Zero payload parameter; executes stored record |
+| `GET` | `/router/eval` | Latest eval benchmark & confusion matrix | Returns: Accuracy, per-agent metrics, prompt staleness |
+| `GET` | `/router/evals` | Historical eval runs with pagination | Query: `limit=20&offset=0`<br>Returns: `EvalListResponse` |
+| `POST` | `/router/eval` | Trigger on-demand eval run | Runs dataset and persists metrics |
+
+---
+
+## Running Verification & Tests
 
 ```bash
-source .venv/bin/activate
+# Run full test suite (36 tests, unit + integration)
+pytest -v
+
+# Run linter
+ruff check orchestrator_core/ tests/
+
+# Run AST SDK isolation verification
+pytest tests/test_no_sdk_leakage.py -v
+
+# Run offline router evaluation dry-run
+python eval/run_eval.py --dry-run
 ```
 
-Voice features use `SpeechRecognition`, `pyttsx3`, and `pyaudio`. If microphone or TTS setup fails, the rest of the app can still run without voice.
+---
 
-## Environment Variables
+## Non-Goals & Architectural Limitations
 
-Create a `.env` file in the project root. There is no `.env.example` file in the current repo, so use this as the template:
+- **Not an Autonomous Unsupervised Agent**: Orchestrator Agent strictly disallows self-directed external actions. Publishing and sending require verified human-in-the-loop approvals.
+- **No Browser Scraping**: Web scraping of authenticated social platforms (LinkedIn, etc.) is outside core scope due to anti-bot volatility.
+- **Decoupled Frontend**: Built on standalone React 18 and Tailwind with custom design tokens, served directly by FastAPI without Streamlit runtime dependencies.
 
-```env
-GROQ_API_KEY=
-
-GITHUB_TOKEN=
-LINKEDIN_EMAIL=
-LINKEDIN_PASSWORD=
-HASHNODE_TOKEN=
-HASHNODE_PUBLICATION_ID=
-DEVTO_API_KEY=
-EMAIL_ADDRESS=
-EMAIL_APP_PASSWORD=
-```
-
-Required:
-
-- `GROQ_API_KEY` for LLM routing and agent responses.
-
-Optional:
-
-- `GITHUB_TOKEN` for GitHub profile/repo features.
-- `LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD` for LinkedIn-related automation if login support is extended.
-- `HASHNODE_TOKEN` and `HASHNODE_PUBLICATION_ID` for Hashnode publishing.
-- `DEVTO_API_KEY` for Dev.to publishing.
-- `EMAIL_ADDRESS` and `EMAIL_APP_PASSWORD` for Gmail SMTP sending.
-
-## Run The App
-
-```bash
-streamlit run dashboard/app.py
-```
-
-Then open the local Streamlit URL shown in the terminal.
-
-## Example Commands
-
-### General
-
-```text
-generate morning briefing
-quick status
-show approvals
-approve 1
-reject 1
-```
-
-### Jobs And Career
-
-```text
-find machine learning internships on Internshala
-find python internships on Internshala
-job dashboard
-cover letter for AI/ML Intern, Sarvam AI, LangChain and Python role
-tailor resume for <job description>
-skill gap for <job description>
-interview prep for Sarvam AI, Python AI Engineer, <job description>
-career dashboard
-show skills
-show certificates
-```
-
-### Projects And Tasks
-
-```text
-add project Aaqil, multi-agent chief of staff, 2026-06-15
-show projects
-add task Aaqil, polish Streamlit approvals tab, high, 2026-05-30
-show tasks
-complete task 1
-add goal publish 3 posts, 3, weekly
-show goals
-weekly report
-plan week
-what should I work on next
-```
-
-### Content
-
-```text
-generate linkedin post for Aaqil, built a multi-agent assistant
-generate twitter thread for Aaqil, architecture and lessons learned
-generate blog post for Aaqil, agents plus memory plus scheduler
-generate devlog 9, finished approval pipeline, scheduler bugs
-content calendar 2
-content dashboard
-publish hashnode Building Aaqil
-publish devto Building Aaqil
-```
-
-### Research
-
-```text
-write paper for Self-Improving Code Agent, LLM agent with critique loop and vector memory
-find journals for LLM agents
-recommend journals for AI agent systems
-check journal International Journal of Example
-submission email for Self-Improving Code Agent, IEEE Access
-research dashboard
-show papers
-```
-
-### GitHub, LinkedIn, And Email
-
-```text
-show github profile summary
-list github repos
-generate commit message for fixed scheduler notification bug
-draft connection for Jane Doe, AI Recruiter, Example Labs
-draft outreach to Jane Doe, Recruiter, Example Labs, AI/ML Intern
-draft recruiter email to Jane Doe, Example Labs, AI/ML Intern, jane@example.com
-draft application email for Example Labs, AI/ML Intern, LangChain agent role, jobs@example.com
-email dashboard
-send email 1, jobs@example.com
-```
-
-## Project Structure
-
-```text
-.
-|-- agents/
-|   |-- base_agent.py
-|   |-- briefing_agent.py
-|   |-- career_agent.py
-|   |-- critic_agent.py
-|   |-- email_agent.py
-|   |-- github_agent.py
-|   |-- growth_agent.py
-|   |-- job_agent.py
-|   |-- linkedin_agent.py
-|   |-- project_manager_agent.py
-|   `-- research_agent.py
-|-- dashboard/
-|   `-- app.py
-|-- database/
-|   |-- tracker.py
-|   `-- tracker.db
-|-- memory/
-|   `-- chroma_store.py
-|-- orchestrator/
-|   |-- master.py
-|   |-- pipeline.py
-|   `-- router.py
-|-- scheduler/
-|   `-- background.py
-|-- utils/
-|   `-- web_search.py
-|-- voice/
-|   |-- __init__.py
-|   `-- voice_handler.py
-|-- aaqil.db
-|-- chroma_db/
-|-- config.py
-|-- requirements.txt
-`-- README.md
-```
-
-## Notes And Limitations
-
-- The app depends on live APIs and websites. Web scraping can break if LinkedIn, Internshala, or Wellfound change their markup.
-- Sending email and publishing posts are guarded by the approval queue in pipeline flows, but direct agent commands such as `send email` can send through configured SMTP credentials.
-- `database/tracker.py` defines `DB_PATH = "./aaqil.db"`, so run commands from the project root unless you change the database path.
-- Some generated research/content claims still need human review before external submission or publication.
-- The current repo has no automated test suite.
-
-## Tech Stack
-
-| Layer | Tooling |
-| --- | --- |
-| LLM | Groq Python SDK, `llama-3.3-70b-versatile` |
-| UI | Streamlit |
-| Memory | ChromaDB |
-| Database | SQLite |
-| Scheduling | APScheduler |
-| Browser automation | Playwright, playwright-stealth |
-| Search | DuckDuckGo Search, ArXiv |
-| GitHub | PyGithub |
-| Voice | SpeechRecognition, pyttsx3, PyAudio |
-| Publishing/email | Hashnode GraphQL API, Dev.to API, Gmail SMTP |
-
-## Author
-
-Farhan Aaqil  
-B.Tech AI/ML 
-
-- GitHub: <https://github.com/FarhanAaqil>
-- LinkedIn: <https://linkedin.com/in/farhan-aaqil-4730432bb>

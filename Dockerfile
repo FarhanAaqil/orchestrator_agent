@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Orchestrator Agent v2 Core Service
+# Multi-stage Dockerfile for Orchestrator Agent Core Service
 
 # ── Stage 1: Build dependencies ──
 FROM python:3.11-slim AS builder
@@ -31,9 +31,10 @@ RUN groupadd -g 1001 appgroup && \
 # Copy installed dependencies from builder
 COPY --from=builder /root/.local /home/appuser/.local
 
-# Copy only production core source code and database dir
+# Copy production core source code, database dir, and frontend UI
 COPY --chown=appuser:appgroup orchestrator_core/ /app/orchestrator_core/
 COPY --chown=appuser:appgroup database/ /app/database/
+COPY --chown=appuser:appgroup frontend/ /app/frontend/
 
 # Create database and runtime directories with correct permissions
 RUN mkdir -p /app/database && chown -R appuser:appgroup /app

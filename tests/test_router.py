@@ -13,16 +13,19 @@ from orchestrator_core.core.router import (
     prompt_hash,
     _groq_breaker,
     SUPPORTED_AGENTS,
+    clear_router_cache,
 )
 from orchestrator_core.models import RouterResult, ClarificationNeeded
 
 
 @pytest.fixture(autouse=True)
 def reset_router_circuit_breaker():
-    """Ensure circuit breaker is in clean CLOSED state before and after each test."""
+    """Ensure circuit breaker and cache are clean before and after each test."""
     _groq_breaker.reset()
+    clear_router_cache()
     yield
     _groq_breaker.reset()
+    clear_router_cache()
 
 
 def test_classify_high_confidence_returns_router_result():
