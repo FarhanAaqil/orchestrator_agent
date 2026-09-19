@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.svg" width="92" height="92" alt="Orchestrator Agent Logo" />
+</p>
+
 # Orchestrator Agent
 
 [![CI](https://github.com/FarhanAaqil/orchestrater_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/FarhanAaqil/orchestrater_agent/actions/workflows/ci.yml)

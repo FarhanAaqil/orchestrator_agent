@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Orchestrator Agent — Executive Control Plane</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23EEE9DF'/%3E%3Cpath d='M 28.09 74.92 A 31 31 0 1 1 68.32 78.10' fill='none' stroke='%237E939C' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='71.92' cy='74.92' r='5.5' fill='%23FFB162'/%3E%3C/svg%3E" />
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1450,7 +1450,7 @@
       }, []);
 
       const navItems = [
-        { id: 'dispatch', label: 'Dispatch Chat', icon: '⚡' },
+        { id: 'dispatch', label: 'Dispatch Chat', icon: '💬' },
         { id: 'pipelines', label: 'Pipelines', icon: '🚀' },
         { id: 'approvals', label: 'Approvals', icon: '🛡️', badge: pendingCount > 0 ? pendingCount : null },
         { id: 'eval', label: 'Benchmark', icon: '📊' },
@@ -1464,9 +1464,13 @@
             <div className="flex items-center gap-6">
               {/* Brand Emblem */}
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-accent-primary flex items-center justify-center text-white text-lg font-black shadow-sm shadow-accent-primary/25">
-                  ⚡
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden border border-[#D5CEC2] shadow-xs bg-[#EEE9DF] flex-shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-full h-full p-0.5">
+                    <path d="M 28.09 74.92 A 31 31 0 1 1 68.32 78.10" fill="none" stroke="#7E939C" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="71.92" cy="74.92" r="5.5" fill="#FFB162" />
+                  </svg>
                 </div>
+
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="font-extrabold text-base text-silver-900 tracking-tight leading-none">
