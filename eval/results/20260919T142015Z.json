@@ -1,0 +1,346 @@
+{
+  "run_at": "2026-09-19T14:20:15.724158+00:00",
+  "dataset": "G:\\My Drive\\EDU\\Projects\\orchestrator agent\\eval\\fixed_set.json",
+  "prompt_hash": "d86ee12585f18b85",
+  "metrics": {
+    "total": 27,
+    "correct": 24,
+    "accuracy": 0.8889,
+    "per_agent": {
+      "career_agent": {
+        "tp": 8,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "research_agent": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8571,
+        "f1": 0.9231
+      },
+      "growth_content_agent": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8571,
+        "f1": 0.9231
+      },
+      "critic_agent": {
+        "tp": 4,
+        "fp": 1,
+        "fn": 1,
+        "precision": 0.8,
+        "recall": 0.8,
+        "f1": 0.8
+      }
+    },
+    "confusion_matrix": {
+      "career_agent": {
+        "career_agent": 8,
+        "research_agent": 0,
+        "growth_content_agent": 0,
+        "critic_agent": 0,
+        "none": 0
+      },
+      "research_agent": {
+        "career_agent": 0,
+        "research_agent": 6,
+        "growth_content_agent": 0,
+        "critic_agent": 1,
+        "none": 0
+      },
+      "growth_content_agent": {
+        "career_agent": 0,
+        "research_agent": 0,
+        "growth_content_agent": 6,
+        "critic_agent": 0,
+        "none": 1
+      },
+      "critic_agent": {
+        "career_agent": 0,
+        "research_agent": 0,
+        "growth_content_agent": 0,
+        "critic_agent": 4,
+        "none": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "id": 1,
+      "command": "tailor my resume for a machine learning internship at Google",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 2,
+      "command": "skill gap analysis for a data scientist role at Amazon",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 3,
+      "command": "generate interview prep for Microsoft SWE intern",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 4,
+      "command": "write a cover letter for AI researcher at DeepMind",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 5,
+      "command": "roadmap for becoming an ML engineer in 90 days",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 6,
+      "command": "show my skills dashboard",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 7,
+      "command": "I got rejected from Jala Academy, track that outcome",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 8,
+      "command": "write a research paper on federated learning for IoT devices",
+      "expected": "research_agent",
+      "predicted": "research_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 9,
+      "command": "find reputable journals for publishing a paper on NLP transformers",
+      "expected": "research_agent",
+      "predicted": "research_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 10,
+      "command": "read and summarize https://arxiv.org/pdf/2301.00001",
+      "expected": "research_agent",
+      "predicted": "research_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 11,
+      "command": "check if IJCA is a predatory journal",
+      "expected": "research_agent",
+      "predicted": "research_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 12,
+      "command": "draft a journal submission email for IEEE Access",
+      "expected": "research_agent",
+      "predicted": "research_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 13,
+      "command": "recommend journals for my deep learning diabetes paper",
+      "expected": "research_agent",
+      "predicted": "research_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 14,
+      "command": "write a linkedin post about my new LLM agent project",
+      "expected": "growth_content_agent",
+      "predicted": "growth_content_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 15,
+      "command": "twitter thread on how I built a self-improving code agent",
+      "expected": "growth_content_agent",
+      "predicted": "growth_content_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 16,
+      "command": "blog post for Hashnode about my orchestrator agent architecture",
+      "expected": "growth_content_agent",
+      "predicted": "growth_content_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 17,
+      "command": "devlog day 3 \u00e2\u20ac\u201d built the circuit breaker today",
+      "expected": "growth_content_agent",
+      "predicted": "growth_content_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 18,
+      "command": "content calendar for next 2 weeks",
+      "expected": "growth_content_agent",
+      "predicted": "growth_content_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 19,
+      "command": "generate SEO tags for my AI blog post",
+      "expected": "growth_content_agent",
+      "predicted": "growth_content_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 20,
+      "command": "critique this cover letter and improve it if the score is low: Dear Hiring Manager...",
+      "expected": "critic_agent",
+      "predicted": "critic_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 21,
+      "command": "evaluate this LinkedIn post for quality: Excited to share my new project...",
+      "expected": "critic_agent",
+      "predicted": "critic_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 22,
+      "command": "review my research paper abstract and score it",
+      "expected": "critic_agent",
+      "predicted": "critic_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 23,
+      "command": "check the quality of this email draft and rewrite if needed",
+      "expected": "critic_agent",
+      "predicted": "critic_agent",
+      "confidence": 0.96,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": false
+    },
+    {
+      "id": 24,
+      "command": "help me with my career",
+      "expected": "career_agent",
+      "predicted": "career_agent",
+      "confidence": 0.85,
+      "correct": true,
+      "clarification": false,
+      "ambiguous": true
+    },
+    {
+      "id": 25,
+      "command": "write something for my project",
+      "expected": "growth_content_agent",
+      "predicted": null,
+      "confidence": 0.0,
+      "correct": false,
+      "clarification": true,
+      "ambiguous": true
+    },
+    {
+      "id": 26,
+      "command": "improve my paper",
+      "expected": "research_agent",
+      "predicted": "critic_agent",
+      "confidence": 0.72,
+      "correct": false,
+      "clarification": false,
+      "ambiguous": true
+    },
+    {
+      "id": 27,
+      "command": "review this",
+      "expected": "critic_agent",
+      "predicted": null,
+      "confidence": 0.0,
+      "correct": false,
+      "clarification": true,
+      "ambiguous": true
+    }
+  ]
+}

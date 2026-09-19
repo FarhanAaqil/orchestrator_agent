@@ -169,6 +169,22 @@ async def run_eval(
         return EvalRunResponse(eval_id=eval_id, status="failed", message=str(exc))
 
 
+@router.get("/eval")
+async def get_latest_eval():
+    """Return the latest router eval run results and metrics."""
+    from eval.run_eval import check_staleness
+    results_dir = _EVAL_DIR / "results"
+    if not results_dir.exists():
+        return {"message": "No eval runs found"}
+    files = sorted(results_dir.glob("*.json"))
+    if not files:
+        return {"message": "No eval runs found"}
+    latest_file = files[-1]
+    data = json.loads(latest_file.read_text())
+    data["stale"] = check_staleness()
+    return data
+
+
 @router.get("/evals", response_model=EvalListResponse)
 async def list_evals():
     """List all past eval run summaries from eval/index.json."""
