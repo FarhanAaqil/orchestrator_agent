@@ -1,10 +1,39 @@
-# Orchestrator Agent v2
+# Orchestrator Agent
 
 [![CI](https://github.com/FarhanAaqil/orchestrater_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/FarhanAaqil/orchestrater_agent/actions/workflows/ci.yml)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 A production-grade, audited multi-agent orchestration service built on FastAPI. Orchestrator Agent routes natural language instructions to specialized agents with a mathematically measured routing confidence harness, an unbypassable human-in-the-loop approval gate, fail-fast circuit breakers, and zero SDK leakage into untrusted modules.
+
+---
+
+## Visual Demo & Interface Screenshots
+
+### 1. Conversational Chatbot & Dispatch Console
+*ChatGPT-style conversational interface with live auto-scroll, prompt pill suggestions, auto-clearing input dock, and formatted markdown output.*
+
+![Conversational Chatbot](docs/screenshots/chat_demo.png)
+
+### 2. Human-in-the-Loop Approval Gate
+*Immutable audit log and compare-and-set (CAS) state machine preventing unauthorized external actions and payload tampering.*
+
+![Approval Gate](docs/screenshots/approvals_demo.png)
+
+### 3. Multi-Agent Pipeline Execution
+*Live telemetry tracing each pipeline step with latency, inputs, outputs, and deterministic error handling.*
+
+![Pipeline Execution](docs/screenshots/pipelines_demo.png)
+
+### 4. Router Benchmark & Confusion Matrix
+*Empirical 27-point routing evaluation harness measuring intent boundary classification and prompt drift.*
+
+![Router Benchmark](docs/screenshots/benchmark_demo.png)
+
+### 5. Diagnostics & Circuit Breaker Monitor
+*Real-time circuit breaker health metrics, consecutive failure counters, and manual administrative reset controls.*
+
+![System Diagnostics](docs/screenshots/diagnostics_demo.png)
 
 ---
 
@@ -15,7 +44,7 @@ Most multi-agent frameworks suffer from three systemic architectural flaws:
 2. **Bypassable Safety & Payload Substitution**: Human-in-the-loop gates frequently allow callers or compromised subagents to submit arbitrary payloads during the execution phase, bypassing what was originally reviewed.
 3. **SDK & Side-Effect Leakage**: Third-party API and messaging SDKs (`smtplib`, publishing clients) are scattered across agent prompts and tool definitions, risking unauthorized external side-effects whenever an LLM hallucinates.
 
-Orchestrator v2 solves these vulnerabilities at the API and database boundary.
+Orchestrator Agent solves these vulnerabilities at the API and database boundary.
 
 ---
 
@@ -113,12 +142,40 @@ To maintain zero hallucination and strict security guarantees, legacy unverified
 | **Research Agent** | Supported | [`orchestrator_core/agents/research_agent.py`](file:///orchestrator_core/agents/research_agent.py) | ArXiv paper drafting and academic journal suggestions. |
 | **Growth Agent** | Supported | [`orchestrator_core/agents/growth_content_agent.py`](file:///orchestrator_core/agents/growth_content_agent.py) | Tech writing; publish actions gated behind approvals. |
 | **Critic Agent** | Supported | [`orchestrator_core/agents/critic_agent.py`](file:///orchestrator_core/agents/critic_agent.py) | Scoring and improvement feedback. |
+| **Info Agent** | Supported | [`orchestrator_core/agents/info_agent.py`](file:///orchestrator_core/agents/info_agent.py) | Farhan Aaqil's portfolio, system architecture documentation, and general conversational talk. |
 | **LinkedIn Agent** | Quarantined | [`experimental/linkedin_agent/`](file:///experimental/linkedin_agent/) | Dependent on fragile DOM scraping; prohibited in core API. |
 | **Job Search Agent** | Quarantined | [`experimental/job_search_agent/`](file:///experimental/job_search_agent/) | Unofficial job board endpoints; violates stability guarantees. |
 | **GitHub Agent** | Quarantined | [`experimental/github_agent/`](file:///experimental/github_agent/) | Direct repository mutations quarantined outside approval gate. |
 | **Project Manager** | Quarantined | [`experimental/project_manager_agent/`](file:///experimental/project_manager_agent/) | Unverified state tracking; slated for future sprint. |
-| **Info Agent** | Quarantined | [`experimental/info_agent/`](file:///experimental/info_agent/) | Unbounded web search parsing. |
 | **Voice I/O** | Quarantined | [`experimental/voice_io/`](file:///experimental/voice_io/) | PyAudio/hardware dependencies incompatible with lean containers. |
+
+---
+
+## Production Deployment: Load Balancer, Reverse Proxy & CDN
+
+Orchestrator Agent includes production configurations for high-availability clustering, edge reverse proxying, rate-limiting, and CDN caching.
+
+### 1. Nginx Reverse Proxy & Load Balancer
+A production-grade [`nginx/nginx.conf`](nginx/nginx.conf) is provided with:
+- **Load Balancing**: `least_conn` distribution across backend worker replicas.
+- **Failover & Passive Health Probes**: `max_fails=3 fail_timeout=10s` with persistent TCP reuse (`keepalive 32`).
+- **Rate-Limiting**: 30 req/s with burst control for `/route` and `/dispatch`.
+- **Edge Microcaching**: 7-day cache with `stale-while-revalidate` for `/static/` assets.
+- **Streaming Support**: `proxy_buffering off` for unbuffered LLM response delivery.
+
+```bash
+# Launch load-balanced multi-container stack with Nginx
+docker compose up -d
+```
+
+### 2. Caddyfile (Automatic SSL & HTTP/3)
+For zero-config deployments with automatic Let's Encrypt certificates and HTTP/3 support, use the included [`Caddyfile`](Caddyfile):
+```bash
+caddy run
+```
+
+### 3. Edge CDN Caching (Cloudflare / Fastly)
+Comprehensive edge rules, origin cache-control policies, and Cloudflare configuration guidelines are documented in [`docs/CDN_AND_LOAD_BALANCER.md`](docs/CDN_AND_LOAD_BALANCER.md).
 
 ---
 
@@ -151,7 +208,7 @@ cp .env.example .env
 ```bash
 uvicorn orchestrator_core.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-- **React 18 Control Plane Dashboard**: Open [http://localhost:8000/](http://localhost:8000/) (or `/ui`) in your browser to access the MP072-styled web UI (Dispatch, Pipelines, Approvals queue, and Router Eval).
+- **React 18 Control Plane Dashboard**: Open [http://localhost:8000/](http://localhost:8000/) (or `/ui`) in your browser to access the conversational chat console, pipelines, approvals queue, and router eval.
 - **Interactive OpenAPI Documentation**: Available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ---
@@ -168,18 +225,19 @@ Authorization: Bearer <your_token>
 
 | Method | Path | Description | Request / Response Sample |
 |---|---|---|---|
-| `GET` | `/health` | System health check | `{"status": "ok", "version": "2.0.0-alpha"}` |
+| `GET` | `/health` | System health check | `{"status": "ok", "version": "1.0.0"}` |
 | `POST` | `/route` | Classify natural language command | Body: `{"command": "Tailor resume"}`<br>Returns: `RouterResult` or `ClarificationNeeded` (422) |
 | `POST` | `/dispatch` | Classify and immediately execute | Body: `{"command": "..."}`<br>Returns: `AgentResult` |
 | `POST` | `/pipeline/{name}` | Execute named multi-step pipeline | Supported: `apply`, `publish`, `research`<br>Returns: `{"run_id": "...", "status": "running"}` |
+| `GET` | `/runs` | List execution runs with pagination | Query: `limit=20&offset=0`<br>Returns: `RunListResponse` |
 | `GET` | `/runs/{run_id}` | Retrieve step audit log for pipeline run | Returns: Full step logs with latencies & outputs |
 | `POST` | `/approvals` | Queue sensitive action for review | Body: `{"action_type": "...", "payload": {...}}` |
-| `GET` | `/approvals` | List queued approvals | Returns: `list[ApprovalRecord]` |
+| `GET` | `/approvals` | List queued approvals with pagination | Query: `status=pending&limit=50`<br>Returns: `ApprovalListResponse` |
 | `POST` | `/approvals/{id}/approve` | Grant approval | Transitions status: `pending` → `approved` |
 | `POST` | `/approvals/{id}/reject` | Deny approval | Transitions status: `pending` → `rejected` |
 | `POST` | `/approvals/{id}/execute` | Execute approved action | Zero payload parameter; executes stored record |
 | `GET` | `/router/eval` | Latest eval benchmark & confusion matrix | Returns: Accuracy, per-agent metrics, prompt staleness |
-| `GET` | `/router/evals` | Historical eval runs | Returns: List of past eval runs |
+| `GET` | `/router/evals` | Historical eval runs with pagination | Query: `limit=20&offset=0`<br>Returns: `EvalListResponse` |
 | `POST` | `/router/eval` | Trigger on-demand eval run | Runs dataset and persists metrics |
 
 ---
@@ -187,7 +245,7 @@ Authorization: Bearer <your_token>
 ## Running Verification & Tests
 
 ```bash
-# Run full test suite (34 tests, unit + integration)
+# Run full test suite (36 tests, unit + integration)
 pytest -v
 
 # Run linter
@@ -204,6 +262,7 @@ python eval/run_eval.py --dry-run
 
 ## Non-Goals & Architectural Limitations
 
-- **Not an Autonomous Unsupervised Agent**: Orchestrator v2 strictly disallows self-directed external actions. Publishing and sending require verified human-in-the-loop approvals.
+- **Not an Autonomous Unsupervised Agent**: Orchestrator Agent strictly disallows self-directed external actions. Publishing and sending require verified human-in-the-loop approvals.
 - **No Browser Scraping**: Web scraping of authenticated social platforms (LinkedIn, etc.) is outside core scope due to anti-bot volatility.
-- **Decoupled Frontend**: Built on standalone React 18 and Tailwind with MP072 design tokens, served directly by FastAPI without Streamlit runtime dependencies.
+- **Decoupled Frontend**: Built on standalone React 18 and Tailwind with custom design tokens, served directly by FastAPI without Streamlit runtime dependencies.
+

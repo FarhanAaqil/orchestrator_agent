@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Orchestrator Agent v2 Core Service
+# Multi-stage Dockerfile for Orchestrator Agent Core Service
 
 # ── Stage 1: Build dependencies ──
 FROM python:3.11-slim AS builder
