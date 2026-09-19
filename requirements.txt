@@ -3,12 +3,10 @@
 
 groq==1.2.0
 chromadb==1.5.9
-streamlit==1.57.0
 python-dotenv==1.2.2
 PyGithub==2.9.1
 SpeechRecognition==3.14.5
 pyttsx3==2.99
-audio-recorder-streamlit
 feedparser==6.0.12
 
 apscheduler==3.11.2

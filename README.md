@@ -151,7 +151,8 @@ cp .env.example .env
 ```bash
 uvicorn orchestrator_core.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-The interactive OpenAPI Swagger documentation is available at `http://localhost:8000/docs`.
+- **React 18 Control Plane Dashboard**: Open [http://localhost:8000/](http://localhost:8000/) (or `/ui`) in your browser to access the MP072-styled web UI (Dispatch, Pipelines, Approvals queue, and Router Eval).
+- **Interactive OpenAPI Documentation**: Available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ---
 
@@ -205,4 +206,4 @@ python eval/run_eval.py --dry-run
 
 - **Not an Autonomous Unsupervised Agent**: Orchestrator v2 strictly disallows self-directed external actions. Publishing and sending require verified human-in-the-loop approvals.
 - **No Browser Scraping**: Web scraping of authenticated social platforms (LinkedIn, etc.) is outside core scope due to anti-bot volatility.
-- **Backend API Only**: Orchestrator v2 is a headless REST API service. Frontend dashboards and chat interfaces are managed in downstream decoupled clients.
+- **Decoupled Frontend**: Built on standalone React 18 and Tailwind with MP072 design tokens, served directly by FastAPI without Streamlit runtime dependencies.

@@ -10,10 +10,12 @@ import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from orchestrator_core.config import get_settings
 from orchestrator_core.storage.db import get_db, run_migrations
@@ -155,3 +157,22 @@ async def health_check():
     """Health check confirming service status, version, and environment."""
     s = get_settings()
     return {"status": "ok", "version": s.app_version, "environment": s.environment}
+
+
+# ── Static UI / Frontend Serving ──────────────────────────────────────────────
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+INDEX_HTML = FRONTEND_DIR / "index.html"
+
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/ui", include_in_schema=False)
+async def serve_ui():
+    """Serve the standalone React 18 / MP072 control plane dashboard."""
+    if INDEX_HTML.exists():
+        return FileResponse(INDEX_HTML)
+    return JSONResponse(status_code=404, content={"error": "UI index.html not found"})
+

@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orchestrator Agent v2 — Control Plane</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2222%22 font-size=%2222%22>⚡</text></svg>" />
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS with MP072 Design Tokens -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            canvas: { dark: '#1B2632', light: '#EEE9DF' },
+            surface: { primary: '#2C3B4D', muted: '#C9C1B1' },
+            accent: { primary: '#FFB162' },
+            state: { warning: '#A35139', success: '#5A8A6B', danger: '#B4453A' },
+            text: { primary: '#EEE9DF', onLight: '#1B2632', muted: '#7C8A99' },
+          },
+          borderRadius: { pill: '999px' },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body {
+      background-color: #1B2632;
+      color: #EEE9DF;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+
+  <!-- React 18 and Babel for standalone runtime -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-canvas-dark text-text-primary min-h-screen antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ── API Helpers ──
+    const api = {
+      dispatch: async (command) => {
+        const res = await fetch('/dispatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, context: {} })
+        });
+        if (res.status === 422) {
+          const err = await res.json();
+          throw { isClarification: true, ...err };
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        return res.json();
+      },
+      startPipeline: async (name, command) => {
+        const res = await fetch(`/pipeline/${name}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      getRun: async (runId) => {
+        const res = await fetch(`/runs/${runId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      getApprovals: async (status) => {
+        const q = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+        const res = await fetch(`/approvals${q}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      approve: async (id) => {
+        const res = await fetch(`/approvals/${id}/approve`, { method: 'POST' });
+        return res.json();
+      },
+      reject: async (id) => {
+        const res = await fetch(`/approvals/${id}/reject`, { method: 'POST' });
+        return res.json();
+      },
+      execute: async (id) => {
+        const res = await fetch(`/approvals/${id}/execute`, { method: 'POST' });
+        return res.json();
+      },
+      getEval: async () => {
+        const res = await fetch('/router/eval');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      getEvals: async () => {
+        const res = await fetch('/router/evals');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      triggerEval: async () => {
+        const res = await fetch('/router/eval', { method: 'POST' });
+        return res.json();
+      }
+    };
+
+    // ── StatusPill Component ──
+    function StatusPill({ status, size = 'md' }) {
+      const s = (status || '').toLowerCase();
+      let bg = 'bg-surface-primary text-text-primary border border-surface-muted/30';
+      let dot = 'bg-surface-muted';
+      let label = s.toUpperCase();
+
+      if (s === 'pending') {
+        bg = 'bg-state-warning text-[#EEE9DF]';
+        dot = 'bg-[#FFB162]';
+      } else if (s === 'approved' || s === 'completed' || s === 'executed') {
+        bg = 'bg-state-success text-[#EEE9DF]';
+        dot = 'bg-white';
+      } else if (s === 'rejected' || s === 'failed') {
+        bg = 'bg-state-danger text-[#EEE9DF]';
+        dot = 'bg-white';
+      } else if (s === 'running' || s === 'executing') {
+        bg = 'bg-accent-primary text-text-onLight font-bold animate-pulse';
+        dot = 'bg-[#1B2632]';
+      }
+
+      const pad = size === 'sm' ? 'px-2.5 py-0.5 text-[10px]' : 'px-3 py-1 text-xs font-semibold';
+      return (
+        <span className={`inline-flex items-center gap-1.5 rounded-pill uppercase tracking-wider ${pad} ${bg}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+          <span>{label}</span>
+        </span>
+      );
+    }
+
+    // ── Dispatch View ──
+    function DispatchView() {
+      const [cmd, setCmd] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [clarification, setClarification] = useState(null);
+      const [err, setErr] = useState(null);
+
+      const suggestions = [
+        'Tailor my resume for a Senior Machine Learning Engineer role at DeepMind',
+        'Write a research paper on federated learning for IoT edge devices',
+        'Draft a tech blog post for Hashnode about building multi-agent systems',
+        'Critique this cover letter and suggest improvements for higher ATS score',
+        'Help me with my career project'
+      ];
+
+      const run = async (text) => {
+        const query = text || cmd;
+        if (!query.trim() || loading) return;
+        setLoading(true);
+        setErr(null);
+        setResult(null);
+        setClarification(null);
+
+        try {
+          const data = await api.dispatch(query);
+          setResult(data);
+        } catch (e) {
+          if (e.isClarification) {
+            setClarification(e);
+          } else {
+            setErr(e.message || 'Dispatch failed');
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <div>
+            <h2 className="text-2xl font-black text-[#EEE9DF] flex items-center gap-2">
+              ⚡ Natural Language Dispatch
+            </h2>
+            <p className="text-sm text-text-muted mt-1">
+              Route commands to specialized agents with measured confidence thresholding.
+            </p>
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); run(); }} className="relative w-full">
+            <div className="flex items-center bg-surface-primary rounded-2xl border border-surface-primary shadow-xl focus-within:ring-2 focus-within:ring-accent-primary">
+              <span className="pl-4 text-accent-primary font-mono text-lg">›</span>
+              <input
+                type="text"
+                value={cmd}
+                onChange={(e) => setCmd(e.target.value)}
+                placeholder='Type a command (e.g. "Tailor my resume for DeepMind AI Intern")...'
+                className="w-full bg-transparent text-text-primary px-4 py-4 text-base focus:outline-none placeholder:text-text-muted"
+                disabled={loading}
+              />
+              <button
+                type="submit"
+                disabled={!cmd.trim() || loading}
+                className="mr-3 px-5 py-2.5 bg-accent-primary hover:bg-[#ffa343] text-text-onLight font-bold text-sm rounded-pill transition-all active:scale-95 disabled:opacity-40"
+              >
+                {loading ? 'Routing...' : 'Execute'}
+              </button>
+            </div>
+          </form>
+
+          {/* Suggestions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-text-muted font-medium">Try:</span>
+            {suggestions.map((s, idx) => (
+              <button
+                key={idx}
+                onClick={() => { setCmd(s); run(s); }}
+                className="text-xs px-3 py-1.5 rounded-xl bg-surface-primary hover:bg-surface-primary/80 border border-surface-muted/20 text-text-primary truncate max-w-xs transition-colors"
+                title={s}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {err && (
+            <div className="p-4 rounded-2xl bg-state-danger/20 border border-state-danger text-sm">
+              {err}
+            </div>
+          )}
+
+          {clarification && (
+            <div className="bg-surface-primary rounded-2xl border-2 border-state-warning p-6 shadow-xl space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-accent-primary font-bold text-lg">⚠ Routing Clarification Needed</span>
+                <span className="text-[10px] uppercase font-bold bg-state-warning/40 text-accent-primary px-2 py-0.5 rounded-pill">
+                  Confidence &lt; 60%
+                </span>
+              </div>
+              <p className="text-sm text-text-muted">
+                {clarification.reasoning || 'This command is ambiguous across agents. Select your target agent:'}
+              </p>
+              <div className="flex flex-wrap gap-2 pt-2">
+                {(clarification.candidates || []).map(agent => (
+                  <button
+                    key={agent}
+                    onClick={() => run(`[Route directly to: ${agent}] ${cmd}`)}
+                    className="px-4 py-2 rounded-xl bg-canvas-dark border border-surface-muted/30 hover:border-accent-primary text-sm font-semibold text-text-primary flex items-center gap-1.5"
+                  >
+                    <span>{agent}</span> &rarr;
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="bg-surface-primary rounded-2xl border border-surface-muted/20 p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-surface-muted/20">
+                <div>
+                  <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Specialist Agent</span>
+                  <h3 className="text-lg font-bold text-accent-primary">{result.agent}</h3>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  {result.metadata?.confidence && (
+                    <span className="px-3 py-1 rounded-pill bg-canvas-dark border border-surface-muted/20">
+                      Confidence: {Math.round(result.metadata.confidence * 100)}%
+                    </span>
+                  )}
+                  {result.metadata?.latency_ms && (
+                    <span className="px-3 py-1 rounded-pill bg-canvas-dark border border-surface-muted/20">
+                      {result.metadata.latency_ms} ms
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-canvas-dark rounded-xl p-4 border border-surface-muted/20 text-sm whitespace-pre-wrap leading-relaxed">
+                {result.output}
+              </div>
+
+              {result.action_type && (
+                <div className="p-3 bg-state-warning/20 border border-state-warning/40 rounded-xl flex items-center justify-between text-xs">
+                  <span>
+                    <strong className="text-accent-primary">Safety Gate Activated:</strong> Queued for human approval: <code className="font-mono text-accent-primary">{result.action_type}</code>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Pipelines View ──
+    function PipelinesView({ onSelectRun }) {
+      const [sel, setSel] = useState('research');
+      const [cmd, setCmd] = useState('Research Fourier neural operators for PDE solving');
+      const [loading, setLoading] = useState(false);
+
+      const items = [
+        { id: 'research', title: 'Research Pipeline', desc: 'ArXiv search, literature analysis, and IEEE draft generation.' },
+        { id: 'apply', title: 'Application Pipeline', desc: 'Job description parsing, skill gap analysis, and tailored cover letters.' },
+        { id: 'publish', title: 'Publishing Pipeline', desc: 'Blog & social drafting routed through the unbypassable approval gate.' }
+      ];
+
+      const launch = async () => {
+        if (!cmd.trim() || loading) return;
+        setLoading(true);
+        try {
+          const res = await api.startPipeline(sel, cmd);
+          if (res.run_id) onSelectRun(res.run_id);
+        } catch (e) {
+          alert('Pipeline launch failed: ' + e.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <div>
+            <h2 className="text-2xl font-black text-[#EEE9DF]">🚀 Autonomous Pipelines</h2>
+            <p className="text-sm text-text-muted mt-1">Multi-step agent pipelines with step-level latency tracking.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {items.map(p => (
+              <button
+                key={p.id}
+                onClick={() => setSel(p.id)}
+                className={`p-5 rounded-2xl border text-left transition-all ${
+                  sel === p.id
+                    ? 'bg-surface-primary border-accent-primary ring-1 ring-accent-primary'
+                    : 'bg-surface-primary/60 border-surface-muted/20 hover:bg-surface-primary'
+                }`}
+              >
+                <h4 className="font-bold text-base text-[#EEE9DF]">{p.title}</h4>
+                <p className="text-xs text-text-muted mt-1.5 leading-relaxed">{p.desc}</p>
+                <span className="text-xs font-semibold text-accent-primary mt-3 block uppercase tracking-wider">
+                  {sel === p.id ? 'Selected ✓' : 'Select'}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-surface-primary rounded-2xl border border-surface-muted/20 p-6 space-y-4">
+            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">
+              Pipeline Parameters / Instructions
+            </label>
+            <textarea
+              rows={3}
+              value={cmd}
+              onChange={e => setCmd(e.target.value)}
+              className="w-full bg-canvas-dark text-text-primary rounded-xl p-4 text-sm border border-surface-muted/20 focus:outline-none focus:ring-2 focus:ring-accent-primary"
+            />
+            <div className="flex justify-end">
+              <button
+                onClick={launch}
+                disabled={loading || !cmd.trim()}
+                className="px-6 py-3 bg-accent-primary hover:bg-[#ffa343] text-text-onLight font-bold text-sm rounded-pill transition-all disabled:opacity-40"
+              >
+                {loading ? 'Launching...' : `Launch ${sel.toUpperCase()} Pipeline`}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Run Detail View ──
+    function RunDetailView({ runId, onBack }) {
+      const [run, setRun] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      const fetchRun = async () => {
+        try {
+          const d = await api.getRun(runId);
+          setRun(d);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        fetchRun();
+        const t = setInterval(() => {
+          if (run?.status === 'running' || !run) fetchRun();
+        }, 2000);
+        return () => clearInterval(t);
+      }, [runId, run?.status]);
+
+      if (loading && !run) {
+        return <div className="p-12 text-center text-text-muted font-mono">Loading run #{runId}...</div>;
+      }
+
+      return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <button onClick={onBack} className="text-xs font-semibold text-text-muted hover:text-accent-primary">
+            &larr; Back to Pipelines
+          </button>
+
+          {run && (
+            <>
+              <div className="bg-surface-primary rounded-2xl border border-surface-muted/20 p-6 shadow-xl space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-xs font-mono text-text-muted">Run ID: {run.run_id}</span>
+                    <h3 className="text-xl font-black capitalize mt-0.5 text-[#EEE9DF]">{run.pipeline_name} Pipeline</h3>
+                  </div>
+                  <StatusPill status={run.status} />
+                </div>
+                <div className="flex items-center gap-4 text-xs font-mono text-text-muted pt-2 border-t border-surface-muted/10">
+                  <span>Started: {new Date(run.started_at).toLocaleTimeString()}</span>
+                  {run.completed_at && <span>Completed: {new Date(run.completed_at).toLocaleTimeString()}</span>}
+                  {run.status === 'running' && <span className="text-accent-primary animate-pulse">Running steps...</span>}
+                </div>
+              </div>
+
+              {/* Light Panel Inset for Step Trace */}
+              <div className="bg-canvas-light text-text-onLight rounded-2xl p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-surface-muted/40">
+                  <h4 className="font-bold text-sm">Step Trace ({run.steps?.length || 0} Steps)</h4>
+                </div>
+                <div className="space-y-3">
+                  {(run.steps || []).map(step => (
+                    <div key={step.step_number} className="bg-white rounded-xl p-4 border border-surface-muted/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-surface-primary text-[#EEE9DF] font-bold text-xs flex items-center justify-center">
+                            {step.step_number}
+                          </span>
+                          <span className="font-bold text-sm text-surface-primary">{step.agent_name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-mono tabular-nums opacity-70">{step.latency_ms} ms</span>
+                          <span className={`px-2.5 py-0.5 rounded-pill text-[10px] font-bold ${step.success ? 'bg-state-success text-white' : 'bg-state-danger text-white'}`}>
+                            {step.success ? 'SUCCESS' : 'FAILED'}
+                          </span>
+                        </div>
+                      </div>
+                      <pre className="bg-surface-primary/5 p-3 rounded-lg text-xs font-mono whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {step.output_json}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // ── Approvals View ──
+    function ApprovalsView() {
+      const [list, setList] = useState([]);
+      const [filter, setFilter] = useState('all');
+      const [loading, setLoading] = useState(true);
+
+      const fetchApprovals = async () => {
+        try {
+          const res = await api.getApprovals(filter);
+          setList(res.items || []);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        fetchApprovals();
+        const t = setInterval(fetchApprovals, 5000);
+        return () => clearInterval(t);
+      }, [filter]);
+
+      const onApprove = async (id) => {
+        setList(prev => prev.map(a => a.id === id ? { ...a, status: 'approved' } : a));
+        await api.approve(id);
+        fetchApprovals();
+      };
+
+      const onReject = async (id) => {
+        setList(prev => prev.map(a => a.id === id ? { ...a, status: 'rejected' } : a));
+        await api.reject(id);
+        fetchApprovals();
+      };
+
+      const onExecute = async (id) => {
+        setList(prev => prev.map(a => a.id === id ? { ...a, status: 'executing' } : a));
+        await api.execute(id);
+        fetchApprovals();
+      };
+
+      return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-[#EEE9DF]">🛡️ Human Approval Gate</h2>
+              <p className="text-sm text-text-muted mt-1">Zero-parameter execution contract — payloads cannot be substituted.</p>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-surface-primary p-1 rounded-2xl border border-surface-muted/20">
+              {['all', 'pending', 'approved', 'executed', 'rejected'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase ${filter === f ? 'bg-accent-primary text-text-onLight font-bold' : 'text-text-muted hover:text-text-primary'}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading && list.length === 0 ? (
+            <div className="p-12 text-center text-text-muted font-mono">Loading approvals...</div>
+          ) : list.length === 0 ? (
+            <div className="bg-surface-primary rounded-2xl p-12 text-center border border-surface-muted/20 text-text-muted">
+              <h4 className="text-base font-bold text-[#EEE9DF]">Approval Queue Empty</h4>
+              <p className="text-xs text-text-muted mt-1">Sensitive publishing and email actions will appear here for review.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {list.map(item => (
+                <div key={item.id} className="bg-surface-primary rounded-2xl border border-surface-muted/20 p-5 shadow-lg space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-text-muted">#{item.id.slice(0, 8)}</span>
+                        <span className="font-bold text-accent-primary">{item.action_type}</span>
+                      </div>
+                      <span className="text-xs text-text-muted block mt-1">
+                        Queued: {new Date(item.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <StatusPill status={item.status} />
+                  </div>
+
+                  <pre className="bg-canvas-dark p-3 rounded-xl text-xs font-mono text-text-primary border border-surface-muted/20 overflow-x-auto max-h-32">
+                    {item.payload_json}
+                  </pre>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-surface-muted/10">
+                    {item.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => onReject(item.id)}
+                          className="px-4 py-1.5 bg-state-danger/20 hover:bg-state-danger/30 text-white border border-state-danger/40 text-xs font-semibold rounded-pill"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => onApprove(item.id)}
+                          className="px-4 py-1.5 bg-state-success hover:bg-[#4f7b5e] text-white text-xs font-bold rounded-pill shadow"
+                        >
+                          Approve
+                        </button>
+                      </>
+                    )}
+
+                    {item.status === 'approved' && (
+                      <button
+                        onClick={() => onExecute(item.id)}
+                        className="px-5 py-2 bg-accent-primary hover:bg-[#ffa343] text-text-onLight text-xs font-bold rounded-pill shadow"
+                      >
+                        Execute Approved ▶
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Eval View ──
+    function EvalView() {
+      const [evalData, setEvalData] = useState(null);
+      const [history, setHistory] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [running, setRunning] = useState(false);
+
+      const load = async () => {
+        try {
+          const [d, h] = await Promise.all([api.getEval(), api.getEvals()]);
+          setEvalData(d);
+          setHistory(h.runs || []);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => { load(); }, []);
+
+      const trigger = async () => {
+        setRunning(true);
+        try {
+          await api.triggerEval();
+          await load();
+        } finally {
+          setRunning(false);
+        }
+      };
+
+      if (loading && !evalData) {
+        return <div className="p-12 text-center text-text-muted font-mono">Loading accuracy benchmarks...</div>;
+      }
+
+      const m = evalData?.metrics;
+      const matrix = m?.confusion_matrix || {};
+      const expected = Object.keys(matrix);
+      const predicted = [...expected, 'none'];
+
+      return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-[#EEE9DF]">📊 Router Accuracy Benchmark</h2>
+              <p className="text-sm text-text-muted mt-1">Evaluated across 27 ground-truth commands.</p>
+            </div>
+            <button
+              onClick={trigger}
+              disabled={running}
+              className="px-5 py-2.5 bg-accent-primary hover:bg-[#ffa343] text-text-onLight font-bold text-xs rounded-pill transition-all disabled:opacity-50"
+            >
+              {running ? 'Evaluating...' : 'Run Benchmark Now ⟳'}
+            </button>
+          </div>
+
+          {m && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-surface-primary rounded-2xl p-5 border border-surface-muted/20 shadow-lg">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Overall Accuracy</span>
+                  <div className="text-3xl font-black text-accent-primary mt-1 font-mono">
+                    {(m.accuracy * 100).toFixed(1)}%
+                  </div>
+                  <span className="text-xs text-text-muted mt-1 block">{m.correct} / {m.total} correctly routed</span>
+                </div>
+
+                <div className="bg-surface-primary rounded-2xl p-5 border border-surface-muted/20 shadow-lg">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Ground Truth Dataset</span>
+                  <div className="text-xl font-bold mt-2 font-mono text-[#EEE9DF]">fixed_set.json</div>
+                  <span className="text-xs text-text-muted mt-1 block">27 commands, 4 ambiguous</span>
+                </div>
+
+                <div className="bg-surface-primary rounded-2xl p-5 border border-surface-muted/20 shadow-lg">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Evaluated At</span>
+                  <div className="text-sm font-bold mt-2 font-mono text-[#EEE9DF]">
+                    {new Date(evalData.run_at).toLocaleString()}
+                  </div>
+                  <span className="text-xs text-state-success font-semibold mt-1 block">Prompt Hash Verified</span>
+                </div>
+              </div>
+
+              {/* Confusion Matrix Heatmap Panel */}
+              <div className="bg-canvas-light text-text-onLight rounded-2xl p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-surface-muted/30">
+                  <h4 className="font-bold text-sm text-surface-primary">Confusion Matrix (Rows=Expected, Cols=Predicted)</h4>
+                  <div className="flex items-center gap-2 text-xs font-mono text-surface-primary/70">
+                    <span className="w-3 h-3 rounded bg-[#C9C1B1]" /> Low
+                    <span className="w-3 h-3 rounded bg-[#FFB162]" /> High
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="p-2 text-xs font-bold text-left text-surface-primary">Agent</th>
+                        {predicted.map(p => (
+                          <th key={p} className="p-2 text-xs font-bold text-surface-primary capitalize">{p.replace('_agent', '')}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expected.map(exp => (
+                        <tr key={exp} className="border-t border-surface-muted/20">
+                          <td className="p-2 text-xs font-bold text-left text-surface-primary capitalize bg-surface-muted/10">
+                            {exp.replace('_agent', '')}
+                          </td>
+                          {predicted.map(pred => {
+                            const val = matrix[exp]?.[pred] || 0;
+                            const isDiag = exp === pred;
+                            let style = 'bg-white/40 text-surface-primary/60';
+                            if (val > 0) {
+                              style = isDiag ? 'bg-accent-primary text-text-onLight font-bold shadow' : 'bg-state-warning/30 text-surface-primary font-bold';
+                            }
+                            return (
+                              <td key={pred} className="p-1">
+                                <div className={`py-2 px-3 rounded-lg text-xs font-mono ${style}`}>{val}</div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Per-Agent Precision Recall Table */}
+              <div className="bg-canvas-light text-text-onLight rounded-2xl p-6 shadow-2xl space-y-4">
+                <h4 className="font-bold text-sm text-surface-primary">Per-Agent Metrics</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead>
+                      <tr className="border-b border-surface-muted/30 text-surface-primary/70">
+                        <th className="p-2">Agent</th>
+                        <th className="p-2 text-right">Precision</th>
+                        <th className="p-2 text-right">Recall</th>
+                        <th className="p-2 text-right">F1</th>
+                        <th className="p-2 text-right">TP</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-muted/20">
+                      {Object.entries(m.per_agent || {}).map(([agent, ag]) => (
+                        <tr key={agent}>
+                          <td className="p-2 font-bold text-surface-primary">{agent}</td>
+                          <td className="p-2 text-right font-bold">{(ag.precision * 100).toFixed(1)}%</td>
+                          <td className="p-2 text-right font-bold">{(ag.recall * 100).toFixed(1)}%</td>
+                          <td className="p-2 text-right font-black text-accent-primary">{(ag.f1 * 100).toFixed(1)}%</td>
+                          <td className="p-2 text-right">{ag.tp}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // ── Main Shell ──
+    function App() {
+      const [tab, setTab] = useState('dispatch');
+      const [runId, setRunId] = useState(null);
+      const [pendingCount, setPendingCount] = useState(0);
+
+      useEffect(() => {
+        const poll = async () => {
+          try {
+            const data = await api.getApprovals('pending');
+            setPendingCount(data.total || 0);
+          } catch {}
+        };
+        poll();
+        const t = setInterval(poll, 5000);
+        return () => clearInterval(t);
+      }, []);
+
+      const nav = [
+        { id: 'dispatch', label: 'Dispatch', icon: '⚡' },
+        { id: 'pipelines', label: 'Pipelines', icon: '🚀' },
+        { id: 'approvals', label: 'Approvals', icon: '🛡️', badge: pendingCount > 0 ? pendingCount : null },
+        { id: 'eval', label: 'Router Eval', icon: '📊' },
+      ];
+
+      return (
+        <div className="min-h-screen flex flex-col md:flex-row bg-canvas-dark text-text-primary">
+          <aside className="w-full md:w-64 bg-surface-primary border-b md:border-b-0 md:border-r border-surface-muted/20 p-5 flex flex-col justify-between flex-shrink-0">
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-10 h-10 rounded-2xl bg-accent-primary flex items-center justify-center text-text-onLight text-xl font-bold shadow-lg shadow-accent-primary/20">
+                  ⚙
+                </div>
+                <div>
+                  <h1 className="font-extrabold text-lg text-[#EEE9DF] leading-none">Orchestrator</h1>
+                  <span className="text-[11px] font-mono text-accent-primary font-bold tracking-widest uppercase mt-0.5 block">
+                    Agent v2 Core
+                  </span>
+                </div>
+              </div>
+
+              <nav className="space-y-1.5">
+                {nav.map(item => {
+                  const active = tab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { setTab(item.id); if (item.id === 'pipelines') setRunId(null); }}
+                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                        active ? 'bg-accent-primary text-text-onLight shadow-md' : 'text-text-muted hover:text-text-primary hover:bg-canvas-dark/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${active ? 'bg-canvas-dark text-accent-primary' : 'bg-state-warning text-[#EEE9DF]'}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {runId && (
+                  <button
+                    onClick={() => setTab('runs')}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                      tab === 'runs' ? 'bg-accent-primary text-text-onLight shadow-md' : 'text-accent-primary/80 hover:bg-canvas-dark/50'
+                    }`}
+                  >
+                    <span>📜</span>
+                    <span className="truncate">Run #{runId.slice(0, 6)}</span>
+                  </button>
+                )}
+              </nav>
+            </div>
+
+            <div className="pt-6 border-t border-surface-muted/10">
+              <div className="bg-canvas-dark/60 rounded-xl p-3 flex items-center justify-between border border-surface-muted/10 text-xs font-mono">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-state-success animate-pulse" />
+                  <span className="text-text-muted">v2.0.0-alpha</span>
+                </span>
+                <a href="/docs" target="_blank" className="text-accent-primary hover:underline">API Docs &rarr;</a>
+              </div>
+            </div>
+          </aside>
+
+          <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+            {tab === 'dispatch' && <DispatchView />}
+            {tab === 'pipelines' && <PipelinesView onSelectRun={id => { setRunId(id); setTab('runs'); }} />}
+            {tab === 'runs' && (runId ? <RunDetailView runId={runId} onBack={() => setTab('pipelines')} /> : <PipelinesView onSelectRun={id => { setRunId(id); setTab('runs'); }} />)}
+            {tab === 'approvals' && <ApprovalsView />}
+            {tab === 'eval' && <EvalView />}
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
