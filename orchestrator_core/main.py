@@ -58,9 +58,12 @@ settings = get_settings()
 app = FastAPI(
     title="Orchestrator Agent Core API",
     version=settings.app_version,
-    description="v2 Execution engine, approval gate, and multi-agent pipeline orchestrator.",
+    description="Execution engine, approval gate, and multi-agent pipeline orchestrator.",
     lifespan=lifespan,
 )
+
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ── Structured request logging middleware ─────────────────────────────────────

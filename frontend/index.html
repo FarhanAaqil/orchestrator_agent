@@ -649,16 +649,22 @@
                   );
                 })}
 
-                {/* Loading / Thinking Indicator */}
+                {/* Loading Skeleton Loader */}
                 {loading && (
-                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-silver-50 border border-silver-200 max-w-md animate-pulse">
-                    <span className="w-6 h-6 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" />
-                    <div>
-                      <span className="text-xs font-mono font-bold text-silver-800 block">Classifying & Routing...</span>
-                      <span className="text-[11px] text-silver-500 font-mono">Generating verified response via Groq...</span>
+                  <div className="flex flex-col items-start space-y-3 max-w-2xl w-full">
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" />
+                      <span className="text-xs font-mono font-bold text-silver-700 animate-pulse">Agent is thinking & composing response...</span>
+                    </div>
+                    <div className="w-full bg-silver-50/80 border border-silver-200 rounded-2xl p-5 space-y-3 animate-pulse shadow-xs">
+                      <div className="h-4 bg-silver-300 rounded-md w-3/4"></div>
+                      <div className="h-3.5 bg-silver-200 rounded-md w-11/12"></div>
+                      <div className="h-3.5 bg-silver-200 rounded-md w-4/5"></div>
+                      <div className="h-3 bg-silver-100 rounded-md w-2/3"></div>
                     </div>
                   </div>
                 )}
+
 
                 <div ref={messagesEndRef} />
               </div>

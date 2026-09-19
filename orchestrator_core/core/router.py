@@ -16,6 +16,7 @@ import json
 import logging
 import re
 import hashlib
+import time
 from typing import Union
 
 from groq import Groq
@@ -29,6 +30,16 @@ logger = logging.getLogger(__name__)
 # Module-level breaker — shared across all classify() calls in the process.
 # 3 consecutive Groq failures → OPEN for 30 s.
 _groq_breaker = CircuitBreaker(service="groq_router", failure_threshold=3, cooldown_seconds=30.0)
+
+# In-memory LRU/TTL cache for repeated router classifications
+_classification_cache: dict[str, tuple[float, Union[RouterResult, ClarificationNeeded]]] = {}
+ROUTER_CACHE_TTL = 300.0  # 5 minutes
+ROUTER_CACHE_MAX_ENTRIES = 512
+
+
+def clear_router_cache() -> None:
+    """Clear the in-memory router classification cache."""
+    _classification_cache.clear()
 
 SUPPORTED_AGENTS = {
     "career_agent": "Resume tailoring, skill gaps, interview prep, career roadmaps, cover letters.",
@@ -171,13 +182,21 @@ def prompt_hash(command: str) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
-def classify(command: str) -> Union[RouterResult, ClarificationNeeded]:
+def classify(command: str, use_cache: bool = True) -> Union[RouterResult, ClarificationNeeded]:
     """
     Classify a user command and return either a RouterResult or a ClarificationNeeded.
 
     Goes through the circuit breaker — raises CircuitOpenError if the breaker
     is OPEN (i.e., Groq has been failing repeatedly).
+    Uses server-side in-memory caching to eliminate redundant LLM calls.
     """
+    cache_key = command.strip().lower()
+    if use_cache and cache_key in _classification_cache:
+        cached_time, cached_result = _classification_cache[cache_key]
+        if time.monotonic() - cached_time < ROUTER_CACHE_TTL:
+            logger.debug("[router] Cache hit for command: %s", command[:40])
+            return cached_result
+
     settings = get_settings()
     threshold = settings.router_confidence_threshold
 
@@ -196,9 +215,18 @@ def classify(command: str) -> Union[RouterResult, ClarificationNeeded]:
             # can surface them as alternatives
             candidates = [agent] + [a for a in SUPPORTED_AGENTS if a != agent]
 
-        return ClarificationNeeded(
+        result = ClarificationNeeded(
             candidates=candidates[:3],
             reasoning=reasoning or f"Confidence {confidence:.0%} is below the {threshold:.0%} threshold.",
         )
+    else:
+        result = RouterResult(agent=agent, confidence=confidence, reasoning=reasoning)
 
-    return RouterResult(agent=agent, confidence=confidence, reasoning=reasoning)
+    if use_cache:
+        if len(_classification_cache) >= ROUTER_CACHE_MAX_ENTRIES:
+            oldest_keys = sorted(_classification_cache, key=lambda k: _classification_cache[k][0])[:100]
+            for k in oldest_keys:
+                _classification_cache.pop(k, None)
+        _classification_cache[cache_key] = (time.monotonic(), result)
+
+    return result

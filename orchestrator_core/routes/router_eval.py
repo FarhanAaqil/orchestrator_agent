@@ -15,7 +15,7 @@ import sqlite3
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel
 
 from orchestrator_core.storage.db import get_db_connection
@@ -186,8 +186,11 @@ async def get_latest_eval():
 
 
 @router.get("/evals", response_model=EvalListResponse)
-async def list_evals():
-    """List all past eval run summaries from eval/index.json."""
+async def list_evals(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """List all past eval run summaries from eval/index.json with bounded pagination."""
     if not _INDEX_PATH.exists():
         return EvalListResponse(runs=[], total=0)
 
@@ -196,5 +199,7 @@ async def list_evals():
     except Exception:
         return EvalListResponse(runs=[], total=0)
 
-    runs = [EvalSummary(**e) for e in entries]
-    return EvalListResponse(runs=list(reversed(runs)), total=len(runs))
+    all_runs = [EvalSummary(**e) for e in reversed(entries)]
+    total = len(all_runs)
+    paginated_runs = all_runs[offset : offset + limit]
+    return EvalListResponse(runs=paginated_runs, total=total)
