@@ -36,17 +36,37 @@ Avoid hustle culture clichés. Be real, share learnings, show the code."""
 
 def _call_llm(prompt: str) -> str:
     settings = get_settings()
-    client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.router_model,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.8,
-        max_tokens=2048,
-    )
-    return response.choices[0].message.content
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        response = client.chat.completions.create(
+            model=settings.router_model,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.8,
+            max_tokens=2048,
+        )
+        return response.choices[0].message.content
+    except Exception as exc:
+        err_msg = str(exc).lower()
+        if "api_key" in err_msg or "401" in err_msg or "unauthorized" in err_msg or "invalid api key" in err_msg:
+            logger.warning("[growth_agent] Groq auth error: %s — providing structured demo output.", exc)
+            return (
+                "⚠️ *Notice: Configured GROQ_API_KEY in .env is expired/invalid. Showing simulated content:*\n\n"
+                "## Building Production Multi-Agent Systems: Why Unbypassable Gates Matter\n\n"
+                "By Farhan Aaqil\n\n"
+                "When deploying multi-agent frameworks in enterprise environments, standard LLM tool calling has a fatal flaw: "
+                "payload substitution at execution time. If an agent hallucinates or an unauthorized caller passes parameters directly to an execution endpoint, safety gates are rendered meaningless.\n\n"
+                "### The Solution: Zero-Parameter CAS Execution\n\n"
+                "In Orchestrator v2, we solved this with atomic Compare-And-Set (CAS) concurrency on SQLite:\n\n"
+                "```python\n"
+                "# Caller passes ONLY the approval ID — zero payload allowed at execution time\n"
+                "execute_approved(approval_id, db)\n"
+                "```\n\n"
+                "This guarantees that the exact payload reviewed and approved by a human is what gets executed by isolated SDK handlers — zero leakage, zero substitution."
+            )
+        raise
 
 
 def handle(command: str, metadata: Optional[dict[str, Any]] = None) -> AgentResult:

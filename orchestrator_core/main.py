@@ -159,6 +159,22 @@ async def health_check():
     return {"status": "ok", "version": s.app_version, "environment": s.environment}
 
 
+@app.get("/system/circuit", tags=["System"])
+async def system_circuit():
+    """Diagnostic endpoint to inspect the router circuit breaker status."""
+    from orchestrator_core.core.router import get_circuit_status
+    return get_circuit_status()
+
+
+@app.post("/system/circuit/reset", tags=["System"])
+async def system_circuit_reset():
+    """Administrative endpoint to manually reset the router circuit breaker."""
+    from orchestrator_core.core.router import reset_circuit_breaker, get_circuit_status
+    reset_circuit_breaker()
+    return {"status": "ok", "message": "Circuit breaker reset to CLOSED", "circuit": get_circuit_status()}
+
+
+
 # ── Static UI / Frontend Serving ──────────────────────────────────────────────
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"

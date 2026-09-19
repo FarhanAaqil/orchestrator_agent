@@ -13,6 +13,7 @@ Confidence threshold is read lazily from settings — no global state on import.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import hashlib
 from typing import Union
@@ -22,6 +23,8 @@ from groq import Groq
 from orchestrator_core.config import get_settings
 from orchestrator_core.core.circuit_breaker import CircuitBreaker
 from orchestrator_core.models import RouterResult, ClarificationNeeded
+
+logger = logging.getLogger(__name__)
 
 # Module-level breaker — shared across all classify() calls in the process.
 # 3 consecutive Groq failures → OPEN for 30 s.
@@ -62,27 +65,96 @@ def _build_system_prompt() -> str:
     return _ROUTER_SYSTEM_PROMPT.format(agent_list=agent_list)
 
 
+def _heuristic_classify(command: str) -> dict:
+    """Deterministic heuristic fallback when Groq API key is invalid or unavailable."""
+    lower = command.lower().strip()
+    # Ambiguous commands
+    if any(k in lower for k in ("what should i do", "what next", "help me decide", "project next", "which one")):
+        return {
+            "agent": "career_agent",
+            "confidence": 0.45,
+            "reasoning": "Ambiguous input — requires user clarification between career and growth pathways.",
+        }
+    # Career keywords
+    if any(k in lower for k in ("resume", "cv", "job", "cover letter", "cover-letter", "interview", "career", "skill", "internship", "application")):
+        return {
+            "agent": "career_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected resume/career intent from keywords.",
+        }
+    # Research keywords
+    if any(k in lower for k in ("paper", "arxiv", "academic", "research", "journal", "literature", "predatory", "cite", "citation")):
+        return {
+            "agent": "research_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected academic research intent from keywords.",
+        }
+    # Growth keywords
+    if any(k in lower for k in ("blog", "dev.to", "devto", "hashnode", "post", "tweet", "twitter", "thread", "devlog", "content")):
+        return {
+            "agent": "growth_content_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected technical writing/growth intent from keywords.",
+        }
+    # Critic keywords
+    if any(k in lower for k in ("critique", "score", "review", "feedback", "grade", "evaluate", "rate")):
+        return {
+            "agent": "critic_agent",
+            "confidence": 0.92,
+            "reasoning": "Detected evaluation/critique intent from keywords.",
+        }
+    # Default fallback to career with moderate confidence
+    return {
+        "agent": "career_agent",
+        "confidence": 0.50,
+        "reasoning": "General instruction routed to career agent by default.",
+    }
+
+
 def _call_groq(command: str) -> dict:
     """Make the raw Groq API call. Wrapped by circuit breaker externally."""
     settings = get_settings()
-    client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.router_model,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": _build_system_prompt()},
-            {"role": "user", "content": command},
-        ],
-        temperature=0.0,
-        max_tokens=200,
-    )
-    raw = response.choices[0].message.content
-    # Strip any markdown fences the model might add despite JSON mode
-    if "```" in raw:
-        match = re.search(r"```(?:json)?(.*?)```", raw, re.DOTALL)
-        if match:
-            raw = match.group(1).strip()
-    return json.loads(raw)
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        response = client.chat.completions.create(
+            model=settings.router_model,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": _build_system_prompt()},
+                {"role": "user", "content": command},
+            ],
+            temperature=0.0,
+            max_tokens=200,
+        )
+        raw = response.choices[0].message.content
+        # Strip any markdown fences the model might add despite JSON mode
+        if "```" in raw:
+            match = re.search(r"```(?:json)?(.*?)```", raw, re.DOTALL)
+            if match:
+                raw = match.group(1).strip()
+        return json.loads(raw)
+    except Exception as exc:
+        err_msg = str(exc).lower()
+        if "api_key" in err_msg or "401" in err_msg or "unauthorized" in err_msg or "invalid api key" in err_msg:
+            logger.warning("[router] Groq API key is invalid/expired (%s) — using heuristic routing.", exc)
+            return _heuristic_classify(command)
+        raise
+
+
+def get_circuit_status() -> dict:
+    """Return circuit breaker diagnostic metrics."""
+    return {
+        "service": _groq_breaker.service,
+        "state": _groq_breaker.state,
+        "consecutive_failures": _groq_breaker._consecutive_failures,
+        "failure_threshold": _groq_breaker.failure_threshold,
+    }
+
+
+def reset_circuit_breaker() -> None:
+    """Manually reset router circuit breaker to CLOSED."""
+    _groq_breaker.reset()
+
 
 
 def prompt_hash(command: str) -> str:

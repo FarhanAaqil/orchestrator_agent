@@ -137,8 +137,8 @@ async def run_eval(
         results = run_classification(dataset)
         metrics = compute_metrics(results)
         ph = prompt_hash()
-        results_file = write_results(metrics, results, _DATASET_PATH, dry_run=False)
-        append_index(metrics, results_file, dry_run=False)
+        results_file = write_results(metrics, results, _DATASET_PATH, no_save=False)
+        append_index(metrics, results_file, no_save=False)
 
         with db:
             db.execute(
