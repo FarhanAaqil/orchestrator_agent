@@ -14,7 +14,7 @@ def test_ui_root_serves_html():
     response = client.get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers.get("content-type", "")
-    assert "Orchestrator Agent v2" in response.text
+    assert "Orchestrator Agent" in response.text
     assert 'id="root"' in response.text
 
 
@@ -23,4 +23,4 @@ def test_ui_path_serves_html():
     response = client.get("/ui")
     assert response.status_code == 200
     assert "text/html" in response.headers.get("content-type", "")
-    assert "Orchestrator Agent v2" in response.text
+    assert "Orchestrator Agent" in response.text

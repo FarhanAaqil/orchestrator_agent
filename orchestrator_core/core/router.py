@@ -35,10 +35,11 @@ SUPPORTED_AGENTS = {
     "research_agent": "Academic paper writing, journal search, research summaries, ArXiv paper analysis.",
     "growth_content_agent": "LinkedIn posts, Twitter threads, blog posts, devlogs, content calendars.",
     "critic_agent": "Quality critique and improvement of cover letters, posts, papers, emails.",
+    "info_agent": "System architecture, how agents/pipelines/approvals work, Farhan Aaqil's projects portfolio, documentation, and general conversation/talk.",
 }
 
 _ROUTER_SYSTEM_PROMPT = """\
-You are a precise router for a 4-agent AI assistant system.
+You are a precise router for a multi-agent AI assistant system.
 Your job is to classify user commands to exactly one agent and return a confidence score.
 
 Available agents:
@@ -69,11 +70,18 @@ def _heuristic_classify(command: str) -> dict:
     """Deterministic heuristic fallback when Groq API key is invalid or unavailable."""
     lower = command.lower().strip()
     # Ambiguous commands
-    if any(k in lower for k in ("what should i do", "what next", "help me decide", "project next", "which one")):
+    if any(k in lower for k in ("what should i do", "what next", "help me decide", "which one")):
         return {
             "agent": "career_agent",
             "confidence": 0.45,
             "reasoning": "Ambiguous input — requires user clarification between career and growth pathways.",
+        }
+    # Info / general / projects / system working keywords
+    if any(k in lower for k in ("who are you", "what can you do", "project", "projects", "architecture", "how does", "how do", "how it works", "working", "about", "info", "explain", "agents", "hi", "hello", "hey", "tell me about", "common talk")):
+        return {
+            "agent": "info_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected system documentation, project inquiry, or general conversational query.",
         }
     # Career keywords
     if any(k in lower for k in ("resume", "cv", "job", "cover letter", "cover-letter", "interview", "career", "skill", "internship", "application")):
@@ -103,11 +111,11 @@ def _heuristic_classify(command: str) -> dict:
             "confidence": 0.92,
             "reasoning": "Detected evaluation/critique intent from keywords.",
         }
-    # Default fallback to career with moderate confidence
+    # Default fallback to info agent for general conversation
     return {
-        "agent": "career_agent",
-        "confidence": 0.50,
-        "reasoning": "General instruction routed to career agent by default.",
+        "agent": "info_agent",
+        "confidence": 0.70,
+        "reasoning": "General query routed to info agent.",
     }
 
 

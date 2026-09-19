@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orchestrator Agent v2 — Executive Control Plane</title>
+  <title>Orchestrator Agent — Executive Control Plane</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
   
   <!-- Fonts -->
@@ -177,6 +177,9 @@
       ]);
 
       const presets = [
+        { label: "ℹ️ Farhan Aaqil's Projects & Research", cmd: "Tell me about Farhan Aaqil's featured projects and research" },
+        { label: "⚙️ How Orchestrator System Works", cmd: "Explain how the orchestrator approval gate, CAS concurrency, and circuit breaker work" },
+        { label: "💬 Common Talk / General Help", cmd: "Hello! What can you do and which agents are available?" },
         { label: "💼 Tailor Resume for ML Role", cmd: "Tailor my resume for a Senior Machine Learning Engineer role" },
         { label: "🔬 Search arXiv Consensus Papers", cmd: "Find recent arXiv papers on multi-agent consensus and reasoning" },
         { label: "✍️ Draft Dev.to Technical Blog", cmd: "Write a Dev.to post about unbypassable human approval gates" },
@@ -392,6 +395,7 @@
                 </h3>
                 <div className="space-y-2.5">
                   {[
+                    { id: "info_agent", name: "Info Agent", desc: "Aaqil's projects portfolio, system architecture, how it works, and common talk.", icon: "ℹ️" },
                     { id: "career_agent", name: "Career Agent", desc: "Resume tailoring, skill-gap analysis, cover letters.", icon: "💼" },
                     { id: "research_agent", name: "Research Agent", desc: "ArXiv literature retrieval, synthesis, peer reviews.", icon: "🔬" },
                     { id: "growth_content_agent", name: "Growth Agent", desc: "Tech articles, Dev.to/Hashnode drafts, social threads.", icon: "✍️" },
@@ -1107,11 +1111,11 @@
                       Orchestrator
                     </h1>
                     <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-surface-primary text-accent-primary border border-surface-muted/20">
-                      v2.0
+                      CONTROL PLANE
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-text-muted block mt-0.5">
-                    Multi-Agent Control Plane
+                    Multi-Agent Core Engine
                   </span>
                 </div>
               </div>
@@ -1196,7 +1200,7 @@
 
           {/* Sleek Minimal Footer */}
           <footer className="border-t border-surface-muted/15 py-4 px-6 text-center text-xs font-mono text-text-muted">
-            Orchestrator Agent v2 Core Service • MP072 Palette • Audited Concurrency & Security Invariants
+            Orchestrator Agent Core Service • MP072 Palette • Audited Concurrency & Security Invariants
           </footer>
         </div>
       );

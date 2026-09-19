@@ -18,14 +18,14 @@ class Settings(BaseSettings):
     database_path: str = "database/orchestrator.db"
     chroma_db_dir: str = "chroma_db"
     groq_api_key: Optional[str] = None
-    router_model: str = "llama-3.3-70b-versatile"
+    router_model: str = "qwen/qwen3.8-27b"
     router_confidence_threshold: float = 0.6
     auth_token: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("auth_token", "api_bearer_token"),
     )
     environment: str = "development"
-    app_version: str = "2.0.0-alpha"
+    app_version: str = "1.0.0"
 
     model_config = SettingsConfigDict(
         env_file=".env",

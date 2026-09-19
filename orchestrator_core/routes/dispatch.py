@@ -22,12 +22,13 @@ router = APIRouter(prefix="/dispatch", tags=["Routing"])
 # Import lazily inside the function to avoid circular imports.
 
 def _get_agent_registry() -> dict:
-    from orchestrator_core.agents import career_agent, research_agent, growth_content_agent, critic_agent
+    from orchestrator_core.agents import career_agent, research_agent, growth_content_agent, critic_agent, info_agent
     return {
         "career_agent": career_agent.handle,
         "research_agent": research_agent.handle,
         "growth_content_agent": growth_content_agent.handle,
         "critic_agent": critic_agent.handle,
+        "info_agent": info_agent.handle,
     }
 
 
