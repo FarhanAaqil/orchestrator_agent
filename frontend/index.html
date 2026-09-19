@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,19 +11,32 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind CSS with MP072 Design Tokens -->
+  <!-- Markdown Parser & Sanitizer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
+  <!-- Tailwind CSS with Metallic Silver Tokens -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            canvas: { dark: '#1B2632', light: '#EEE9DF' },
-            surface: { primary: '#2C3B4D', muted: '#C9C1B1' },
-            accent: { primary: '#FFB162' },
-            state: { warning: '#A35139', success: '#5A8A6B', danger: '#B4453A' },
-            text: { primary: '#EEE9DF', onLight: '#1B2632', muted: '#7C8A99' },
+            silver: {
+              50: '#F8FAFC',
+              100: '#EEF2F6',
+              200: '#DCE2E9',
+              300: '#C8D1DC',
+              400: '#B0B8C4', // True Metallic Silver Canvas
+              500: '#96A0AF', // Deep Silver Tone
+              600: '#7E8897',
+              700: '#5F6977',
+              800: '#333D4B',
+              900: '#0F172A',
+            },
+            accent: { primary: '#D97706', hover: '#B45309', light: '#FEF3C7' },
+            state: { warning: '#D97706', success: '#059669', danger: '#DC2626' },
+            text: { primary: '#0F172A', secondary: '#334155', muted: '#64748B' },
           },
           borderRadius: { pill: '999px' },
         },
@@ -33,18 +46,136 @@
 
   <style>
     body {
-      background-color: #1B2632;
-      color: #EEE9DF;
-      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #B0B8C4; /* Elegant metallic silver */
+      color: #0F172A;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: background-color 0.25s ease;
     }
     code, pre, .font-mono {
       font-family: 'JetBrains Mono', monospace;
     }
     /* Custom scrollbars */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #1B2632; }
-    ::-webkit-scrollbar-thumb { background: #2C3B4D; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #FFB162; }
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
+    ::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+    /* Rich Prose Formatting for Output Box (No raw symbols) */
+    .prose-output {
+      color: #1E293B;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.925rem;
+      line-height: 1.65;
+    }
+    .prose-output h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #0F172A;
+      margin-top: 1.4rem;
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid #CBD5E1;
+      letter-spacing: -0.015em;
+    }
+    .prose-output h2 {
+      font-size: 1.15rem;
+      font-weight: 750;
+      color: #0F172A;
+      margin-top: 1.25rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid #E2E8F0;
+      letter-spacing: -0.01em;
+    }
+    .prose-output h3 {
+      font-size: 1.025rem;
+      font-weight: 700;
+      color: #0F172A;
+      margin-top: 1.1rem;
+      margin-bottom: 0.4rem;
+    }
+    .prose-output h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 0.8rem;
+      margin-bottom: 0.25rem;
+    }
+    .prose-output p {
+      margin-bottom: 0.75rem;
+      color: #1E293B;
+    }
+    .prose-output ul {
+      list-style-type: disc;
+      padding-left: 1.4rem;
+      margin-top: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+    .prose-output ol {
+      list-style-type: decimal;
+      padding-left: 1.4rem;
+      margin-top: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+    .prose-output li {
+      margin-bottom: 0.35rem;
+      color: #1E293B;
+    }
+    .prose-output li > p {
+      margin-bottom: 0.2rem;
+    }
+    .prose-output strong, .prose-output b {
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .prose-output em, .prose-output i {
+      font-style: italic;
+      color: #334155;
+    }
+    .prose-output code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.825rem;
+      background-color: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      border-radius: 0.375rem;
+      padding: 0.15rem 0.35rem;
+      color: #B45309;
+      font-weight: 600;
+    }
+    .prose-output pre {
+      background-color: #0F172A;
+      color: #F8FAFC;
+      padding: 0.875rem 1.1rem;
+      border-radius: 0.75rem;
+      overflow-x: auto;
+      margin-top: 0.75rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.825rem;
+      border: 1px solid #1E293B;
+    }
+    .prose-output pre code {
+      background-color: transparent;
+      border: none;
+      padding: 0;
+      color: #F1F5F9;
+      font-weight: normal;
+    }
+    .prose-output blockquote {
+      border-left: 4px solid #D97706;
+      padding-left: 0.875rem;
+      color: #475569;
+      font-style: italic;
+      margin: 0.75rem 0;
+      background: #FFFBEB;
+      border-radius: 0 0.5rem 0.5rem 0;
+      padding-top: 0.4rem;
+      padding-bottom: 0.4rem;
+    }
+    .prose-output hr {
+      border: 0;
+      border-top: 1px solid #CBD5E1;
+      margin: 1.25rem 0;
+    }
   </style>
 
   <!-- React 18 and Babel -->
@@ -52,11 +183,64 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body class="bg-canvas-dark text-text-primary min-h-screen flex flex-col antialiased">
+<body class="min-h-screen flex flex-col antialiased">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useMemo } = React;
+
+    // ── Markdown Parser with Fallback ──
+    function renderFormattedMarkdown(text) {
+      if (!text) return '';
+      try {
+        if (window.marked && window.DOMPurify) {
+          const raw = window.marked.parse(text, { breaks: true, gfm: true });
+          return window.DOMPurify.sanitize(raw);
+        }
+      } catch (err) {
+        console.warn('Marked parsing error, using fallback:', err);
+      }
+
+      // Built-in fallback renderer (eliminates ###, **, *, etc.)
+      let h = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Code blocks
+      h = h.replace(/```([a-zA-Z0-9_]*)\n([\s\S]*?)```/g, (m, lang, code) => (
+        `<pre><code>${code.trim()}</code></pre>`
+      ));
+      // Inline code
+      h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Headings
+      h = h.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+      h = h.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      h = h.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      h = h.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+      // Bold & Italic
+      h = h.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+      h = h.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      h = h.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+      // Bullet lists
+      h = h.replace(/^[\*\-] (.*$)/gim, '<li class="ml-4 list-disc">$1</li>');
+      // Numbered lists
+      h = h.replace(/^(\d+)\. (.*$)/gim, '<li class="ml-4 list-decimal">$2</li>');
+
+      // Paragraph wrapping
+      const chunks = h.split(/\n\n+/);
+      return chunks.map(chunk => {
+        const trimmed = chunk.trim();
+        if (!trimmed) return '';
+        if (trimmed.startsWith('<h') || trimmed.startsWith('<pre') || trimmed.startsWith('<li')) {
+          return trimmed;
+        }
+        return `<p>${trimmed.replace(/\n/g, '<br />')}</p>`;
+      }).join('');
+    }
 
     // ── API Service ──
     const api = {
@@ -137,58 +321,58 @@
     // ── Accessible Status Pill ──
     function StatusPill({ status, size = 'md' }) {
       const s = (status || '').toLowerCase();
-      let bg = 'bg-surface-primary text-text-primary border border-surface-muted/30';
-      let dot = 'bg-surface-muted';
+      let bg = 'bg-slate-100 text-slate-700 border border-slate-300';
+      let dot = 'bg-slate-400';
       let label = s.toUpperCase();
 
       if (s === 'pending') {
-        bg = 'bg-state-warning/20 text-[#FFB162] border border-state-warning/50 font-bold';
-        dot = 'bg-[#FFB162] animate-pulse';
+        bg = 'bg-amber-50 text-amber-800 border border-amber-300 font-bold';
+        dot = 'bg-amber-500 animate-pulse';
       } else if (s === 'approved' || s === 'completed' || s === 'executed' || s === 'closed' || s === 'ok') {
-        bg = 'bg-state-success/20 text-[#5A8A6B] border border-state-success/40 font-bold';
-        dot = 'bg-[#5A8A6B]';
+        bg = 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold';
+        dot = 'bg-emerald-600';
       } else if (s === 'rejected' || s === 'failed' || s === 'open') {
-        bg = 'bg-state-danger/20 text-[#B4453A] border border-state-danger/40 font-bold';
-        dot = 'bg-[#B4453A]';
-      } else if (s === 'running' || s === 'executing') {
-        bg = 'bg-accent-primary text-text-onLight font-bold animate-pulse';
-        dot = 'bg-[#1B2632]';
+        bg = 'bg-red-50 text-red-800 border border-red-300 font-bold';
+        dot = 'bg-red-500';
       }
 
-      const pad = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
+      const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
+
       return (
-        <span className={`inline-flex items-center gap-1.5 rounded-pill uppercase tracking-wider font-mono ${pad} ${bg}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-full font-mono ${sizeClasses} ${bg}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
           <span>{label}</span>
         </span>
       );
     }
 
-    // ── VIEW 1: DISPATCH STUDIO ──
+    // ── VIEW 1: DISPATCH & AGENT STUDIO ──
     function DispatchView() {
-      const [command, setCommand] = useState('');
+      const [command, setCommand] = useState("");
       const [loading, setLoading] = useState(false);
       const [result, setResult] = useState(null);
       const [error, setError] = useState(null);
       const [clarification, setClarification] = useState(null);
+      const [viewMode, setViewMode] = useState('formatted'); // 'formatted' | 'raw'
+      const [copied, setCopied] = useState(false);
       const [history, setHistory] = useState([
+        { cmd: "Tell me about Farhan Aaqil's featured projects and research", agent: "info_agent", time: "Just now" },
         { cmd: "Tailor my resume for Machine Learning Engineer", agent: "career_agent", time: "Just now" },
-        { cmd: "Search arXiv papers on multi-agent consensus", agent: "research_agent", time: "5m ago" },
+        { cmd: "Search arXiv papers on multi-agent consensus", agent: "research_agent", time: "5m ago" }
       ]);
 
       const presets = [
-        { label: "ℹ️ Farhan Aaqil's Projects & Research", cmd: "Tell me about Farhan Aaqil's featured projects and research" },
-        { label: "⚙️ How Orchestrator System Works", cmd: "Explain how the orchestrator approval gate, CAS concurrency, and circuit breaker work" },
-        { label: "💬 Common Talk / General Help", cmd: "Hello! What can you do and which agents are available?" },
-        { label: "💼 Tailor Resume for ML Role", cmd: "Tailor my resume for a Senior Machine Learning Engineer role" },
-        { label: "🔬 Search arXiv Consensus Papers", cmd: "Find recent arXiv papers on multi-agent consensus and reasoning" },
-        { label: "✍️ Draft Dev.to Technical Blog", cmd: "Write a Dev.to post about unbypassable human approval gates" },
-        { label: "🔍 Score & Critique Cover Letter", cmd: "Critique my cover letter for technical depth and clarity" },
-        { label: "❓ Ambiguous Query (Demo 422)", cmd: "What should I do next with my project?" },
+        { label: "ℹ️ Farhan Aaqil's Projects & Research", cmd: "Tell me about Farhan Aaqil's featured projects, research papers, and technical background." },
+        { label: "⚙️ How Orchestrator System Works", cmd: "Explain how the Orchestrator Agent works, its architecture, safety gates, and agents." },
+        { label: "💬 Common Talk / General Help", cmd: "Hi! Who are you and how can you help me today?" },
+        { label: "💼 Tailor Resume for ML Engineer", cmd: "Tailor my resume bullets for a Senior Machine Learning Engineer position at Anthropic." },
+        { label: "🔬 ArXiv Research Synthesis", cmd: "Search arXiv for recent papers on LLM hallucination mitigation and summarize methodology." },
+        { label: "✍️ Write Technical Devlog", cmd: "Draft a technical deep-dive on zero-parameter approval gates with SQLite CAS concurrency." },
+        { label: "⚠️ Trigger Clarification (422)", cmd: "What should I do next?" }
       ];
 
-      const handleExecute = async (inputCmd) => {
-        const cmdToRun = inputCmd || command;
+      const handleExecute = async (cmdOverride) => {
+        const cmdToRun = cmdOverride || command;
         if (!cmdToRun.trim()) return;
 
         setLoading(true);
@@ -203,7 +387,7 @@
           if (err.isClarification) {
             setClarification(err.detail || err);
           } else if (err.isCircuitOpen) {
-            setError(`Circuit Breaker OPEN: Groq service is temporarily unavailable or cooled down. ${err.detail || ''}`);
+            setError(`Circuit Breaker OPEN: Service is temporarily unavailable or cooling down. ${err.detail || ''}`);
           } else {
             setError(err.message || "Execution failed.");
           }
@@ -212,21 +396,32 @@
         }
       };
 
+      const copyOutput = () => {
+        if (!result?.output) return;
+        navigator.clipboard.writeText(result.output);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      };
+
+      const formattedHtml = useMemo(() => {
+        return renderFormattedMarkdown(result?.output || '');
+      }, [result?.output]);
+
       return (
         <div className="space-y-6">
           {/* Header Banner */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-muted/20 pb-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-silver-500/40 pb-5">
             <div>
-              <h2 className="text-2xl font-extrabold text-[#EEE9DF] tracking-tight flex items-center gap-2.5">
+              <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
                 <span>⚡</span> Dispatch & Agent Studio
               </h2>
-              <p className="text-sm text-text-muted mt-1">
-                Natural-language command classifier and execution dispatch with zero-leakage safety barriers.
+              <p className="text-sm text-silver-800 mt-1">
+                Natural-language command classifier and agent execution console with zero-leakage safety barriers.
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-text-muted">Threshold:</span>
-              <span className="px-2.5 py-1 rounded-md bg-surface-primary border border-surface-muted/30 text-accent-primary font-mono text-xs font-bold">
+              <span className="text-xs font-mono text-silver-800">Threshold:</span>
+              <span className="px-2.5 py-1 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
                 ≥ 0.60
               </span>
             </div>
@@ -234,16 +429,16 @@
 
           {/* Main 2-Column Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Console (7 Cols) */}
+            {/* Left Console (8 Cols) */}
             <div className="lg:col-span-8 space-y-5">
               {/* Command Input Box */}
-              <div className="bg-surface-primary/90 border border-surface-muted/30 rounded-2xl p-5 shadow-xl backdrop-blur-sm space-y-4">
+              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-accent-primary font-mono flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-accent-primary animate-ping" />
                     Prompt Input Console
                   </span>
-                  <span className="text-[11px] text-text-muted font-mono">Press ↵ Enter to Dispatch</span>
+                  <span className="text-[11px] text-silver-700 font-mono">Press ↵ Enter to Dispatch</span>
                 </div>
 
                 <div className="relative">
@@ -256,15 +451,15 @@
                         handleExecute();
                       }
                     }}
-                    placeholder="Enter natural language command (e.g., 'Tailor my resume for Senior AI Engineer')..."
+                    placeholder="Enter your prompt or question (e.g., 'Tell me about Farhan Aaqil's projects', 'Tailor my resume')..."
                     rows={3}
-                    className="w-full bg-canvas-dark/90 border border-surface-muted/30 rounded-xl p-4 text-sm font-mono text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all resize-none shadow-inner"
+                    className="w-full bg-silver-50 border border-silver-300 rounded-xl p-4 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none focus:border-accent-primary focus:bg-white focus:ring-1 focus:ring-accent-primary transition-all resize-none shadow-inner"
                   />
                   <div className="absolute right-3 bottom-3.5 flex items-center gap-2">
                     {command && (
                       <button
                         onClick={() => setCommand('')}
-                        className="text-xs text-text-muted hover:text-text-primary px-2 py-1 rounded"
+                        className="text-xs text-silver-600 hover:text-silver-900 px-2 py-1 rounded transition-all"
                       >
                         Clear
                       </button>
@@ -272,11 +467,11 @@
                     <button
                       onClick={() => handleExecute()}
                       disabled={loading || !command.trim()}
-                      className="px-4 py-2 rounded-lg bg-accent-primary hover:bg-[#ffa347] text-text-onLight font-bold text-xs shadow-lg shadow-accent-primary/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 rounded-lg bg-accent-primary hover:bg-accent-hover text-white font-bold text-xs shadow-md shadow-accent-primary/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
                         <>
-                          <span className="w-3.5 h-3.5 border-2 border-text-onLight border-t-transparent rounded-full animate-spin" />
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           <span>Routing...</span>
                         </>
                       ) : (
@@ -290,8 +485,8 @@
                 </div>
 
                 {/* Preset Prompts Chips */}
-                <div className="space-y-2 pt-1 border-t border-surface-muted/15">
-                  <span className="text-[11px] font-mono text-text-muted uppercase tracking-wider block">Quick-Start Commands:</span>
+                <div className="space-y-2 pt-1 border-t border-silver-200">
+                  <span className="text-[11px] font-mono text-silver-700 uppercase tracking-wider block">Quick-Start Commands:</span>
                   <div className="flex flex-wrap gap-2">
                     {presets.map((p, i) => (
                       <button
@@ -300,7 +495,7 @@
                           setCommand(p.cmd);
                           handleExecute(p.cmd);
                         }}
-                        className="px-2.5 py-1.5 rounded-lg bg-canvas-dark/60 hover:bg-canvas-dark border border-surface-muted/20 hover:border-accent-primary/60 text-xs text-text-muted hover:text-text-primary transition-all text-left"
+                        className="px-2.5 py-1.5 rounded-lg bg-silver-100 hover:bg-silver-200 border border-silver-300 text-xs text-silver-800 hover:text-silver-950 transition-all text-left font-medium"
                       >
                         {p.label}
                       </button>
@@ -311,24 +506,24 @@
 
               {/* Error Alert */}
               {error && (
-                <div className="bg-state-danger/15 border border-state-danger/40 rounded-xl p-4 text-xs font-mono text-[#EEE9DF] flex items-start gap-3 shadow-lg animate-fade-in">
-                  <span className="text-base text-state-danger">⚠️</span>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm">
+                  <span className="text-base text-red-600">⚠️</span>
                   <div className="flex-1 space-y-1">
-                    <span className="font-bold text-state-danger uppercase tracking-wider block">Execution Notice</span>
-                    <p className="text-text-primary/90">{error}</p>
+                    <span className="font-bold text-red-700 uppercase tracking-wider block">Execution Notice</span>
+                    <p className="text-red-800">{error}</p>
                   </div>
-                  <button onClick={() => setError(null)} className="text-text-muted hover:text-text-primary">✕</button>
+                  <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 font-bold">✕</button>
                 </div>
               )}
 
               {/* Clarification Prompt Card (422) */}
               {clarification && (
-                <div className="bg-state-warning/15 border border-state-warning/50 rounded-2xl p-5 shadow-2xl space-y-4">
-                  <div className="flex items-center gap-2.5 text-accent-primary font-bold text-sm">
+                <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
                     <span>⚠️</span>
                     <span>Clarification Needed (Confidence Below 60%)</span>
                   </div>
-                  <p className="text-xs text-text-primary/90 font-mono">
+                  <p className="text-xs text-amber-800 font-mono">
                     {clarification.reasoning || "The router could not definitively classify your intent. Please select the intended target agent:"}
                   </p>
                   <div className="flex flex-wrap gap-2.5 pt-2">
@@ -336,7 +531,7 @@
                       <button
                         key={agent}
                         onClick={() => handleExecute(`[For ${agent}] ${command}`)}
-                        className="px-3.5 py-2 rounded-xl bg-surface-primary hover:bg-accent-primary hover:text-text-onLight border border-surface-muted/30 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2"
+                        className="px-3.5 py-2 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
                       >
                         <span>🎯 Re-route to:</span>
                         <span className="underline">{agent}</span>
@@ -346,18 +541,19 @@
                 </div>
               )}
 
-              {/* Execution Result View */}
+              {/* Formatted Convenient Output Deck */}
               {result && (
-                <div className="bg-canvas-light text-text-onLight rounded-2xl p-6 shadow-2xl space-y-5 border border-surface-muted/30 transition-all">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-muted/30 pb-4">
+                <div className="bg-white rounded-2xl p-6 shadow-md border border-silver-400/80 space-y-5 transition-all">
+                  {/* Output Header Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-silver-200 pb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-surface-primary flex items-center justify-center text-accent-primary font-bold text-base shadow">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-base shadow-xs">
                         ✓
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold uppercase tracking-wider text-surface-primary/70">Target Agent:</span>
-                          <span className="font-mono font-extrabold text-sm px-2 py-0.5 rounded bg-surface-primary text-[#EEE9DF]">
+                          <span className="text-xs font-mono font-bold uppercase tracking-wider text-silver-700">Dispatched Agent:</span>
+                          <span className="font-mono font-extrabold text-xs px-2.5 py-1 rounded-md bg-silver-900 text-white shadow-xs">
                             {result.agent}
                           </span>
                         </div>
@@ -365,22 +561,55 @@
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* View Mode Toggle: Formatted vs Raw */}
+                      <div className="flex bg-silver-100 p-1 rounded-lg border border-silver-300 text-xs">
+                        <button
+                          onClick={() => setViewMode('formatted')}
+                          className={`px-3 py-1 rounded-md font-medium transition-all ${
+                            viewMode === 'formatted'
+                              ? 'bg-white text-silver-900 shadow-xs font-bold'
+                              : 'text-silver-700 hover:text-silver-900'
+                          }`}
+                        >
+                          ✨ Formatted
+                        </button>
+                        <button
+                          onClick={() => setViewMode('raw')}
+                          className={`px-3 py-1 rounded-md font-medium font-mono transition-all ${
+                            viewMode === 'raw'
+                              ? 'bg-white text-silver-900 shadow-xs font-bold'
+                              : 'text-silver-700 hover:text-silver-900'
+                          }`}
+                        >
+                          📄 Raw
+                        </button>
+                      </div>
+
+                      {/* Copy Button */}
                       <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(result.output || '');
-                          alert('Output copied to clipboard!');
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-surface-primary/10 hover:bg-surface-primary/20 text-surface-primary text-xs font-mono font-bold transition-all"
+                        onClick={copyOutput}
+                        className={`px-3.5 py-1.5 rounded-lg border text-xs font-medium transition-all flex items-center gap-1.5 ${
+                          copied
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold'
+                            : 'bg-silver-50 hover:bg-silver-100 border-silver-300 text-silver-800'
+                        }`}
                       >
-                        Copy Output
+                        <span>{copied ? '✓ Copied!' : '📋 Copy'}</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Formatted Output Body */}
-                  <div className="bg-white/80 rounded-xl p-5 border border-surface-muted/20 text-xs sm:text-sm font-mono text-surface-primary leading-relaxed whitespace-pre-wrap max-h-[500px] overflow-y-auto shadow-inner">
-                    {result.output}
-                  </div>
+                  {/* Body: Formatted Rich Text (NO raw symbols!) */}
+                  {viewMode === 'formatted' ? (
+                    <div
+                      className="prose-output bg-silver-50/70 rounded-xl p-6 border border-silver-200 max-h-[600px] overflow-y-auto shadow-inner"
+                      dangerouslySetInnerHTML={{ __html: formattedHtml }}
+                    />
+                  ) : (
+                    <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 text-xs font-mono text-slate-100 leading-relaxed whitespace-pre-wrap max-h-[600px] overflow-y-auto shadow-inner">
+                      {result.output}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -388,51 +617,51 @@
             {/* Right Inspector Rail (4 Cols) */}
             <div className="lg:col-span-4 space-y-5">
               {/* Agent Roster Card */}
-              <div className="bg-surface-primary/70 border border-surface-muted/25 rounded-2xl p-5 shadow-lg space-y-3.5">
+              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
                 <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-accent-primary flex items-center justify-between">
                   <span>Supported Agent Roster</span>
-                  <span className="w-2 h-2 rounded-full bg-state-success" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 </h3>
                 <div className="space-y-2.5">
                   {[
-                    { id: "info_agent", name: "Info Agent", desc: "Aaqil's projects portfolio, system architecture, how it works, and common talk.", icon: "ℹ️" },
+                    { id: "info_agent", name: "Info Agent", desc: "Farhan Aaqil's projects portfolio, system architecture, how it works, and common talk.", icon: "ℹ️" },
                     { id: "career_agent", name: "Career Agent", desc: "Resume tailoring, skill-gap analysis, cover letters.", icon: "💼" },
                     { id: "research_agent", name: "Research Agent", desc: "ArXiv literature retrieval, synthesis, peer reviews.", icon: "🔬" },
                     { id: "growth_content_agent", name: "Growth Agent", desc: "Tech articles, Dev.to/Hashnode drafts, social threads.", icon: "✍️" },
                     { id: "critic_agent", name: "Critic Agent", desc: "Objective scoring, rubric reviews, gap critiques.", icon: "🔍" },
                   ].map(a => (
-                    <div key={a.id} className="p-3 rounded-xl bg-canvas-dark/60 border border-surface-muted/15 space-y-1 hover:border-surface-muted/30 transition-all">
+                    <div key={a.id} className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1 hover:border-silver-300 transition-all">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#EEE9DF] flex items-center gap-2">
+                        <span className="text-xs font-bold text-silver-900 flex items-center gap-2">
                           <span>{a.icon}</span>
                           <span>{a.name}</span>
                         </span>
-                        <span className="text-[10px] font-mono text-state-success font-bold">READY</span>
+                        <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">READY</span>
                       </div>
-                      <p className="text-[11px] text-text-muted leading-tight">{a.desc}</p>
+                      <p className="text-[11px] text-silver-700 leading-tight">{a.desc}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Recent Dispatches Feed */}
-              <div className="bg-surface-primary/70 border border-surface-muted/25 rounded-2xl p-5 shadow-lg space-y-3.5">
-                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#EEE9DF] flex items-center justify-between">
+              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-silver-900 flex items-center justify-between">
                   <span>Session Activity</span>
-                  <span className="text-[10px] font-mono text-text-muted">{history.length} items</span>
+                  <span className="text-[10px] font-mono text-silver-600">{history.length} items</span>
                 </h3>
                 <div className="space-y-2">
                   {history.map((h, i) => (
                     <button
                       key={i}
                       onClick={() => { setCommand(h.cmd); handleExecute(h.cmd); }}
-                      className="w-full text-left p-2.5 rounded-xl bg-canvas-dark/40 hover:bg-canvas-dark/80 border border-surface-muted/10 hover:border-accent-primary/40 transition-all space-y-1 block"
+                      className="w-full text-left p-2.5 rounded-xl bg-silver-50 hover:bg-silver-100 border border-silver-200 hover:border-accent-primary/50 transition-all space-y-1 block"
                     >
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="font-mono text-accent-primary font-bold">{h.agent}</span>
-                        <span className="text-text-muted text-[10px]">{h.time}</span>
+                        <span className="text-silver-500 text-[10px]">{h.time}</span>
                       </div>
-                      <p className="text-xs text-text-muted truncate">{h.cmd}</p>
+                      <p className="text-xs text-silver-800 truncate">{h.cmd}</p>
                     </button>
                   ))}
                 </div>
@@ -495,11 +724,11 @@
 
       return (
         <div className="space-y-6">
-          <div className="border-b border-surface-muted/20 pb-5">
-            <h2 className="text-2xl font-extrabold text-[#EEE9DF] tracking-tight flex items-center gap-2.5">
+          <div className="border-b border-silver-500/40 pb-5">
+            <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
               <span>🚀</span> Multi-Step Pipelines
             </h2>
-            <p className="text-sm text-text-muted mt-1">
+            <p className="text-sm text-silver-800 mt-1">
               Deterministic, multi-agent automated workflows audited with step-by-step trace tracking.
             </p>
           </div>
@@ -508,28 +737,28 @@
             {pipelines.map(p => (
               <div
                 key={p.id}
-                className="bg-surface-primary/80 border border-surface-muted/25 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-5 hover:border-accent-primary/40 transition-all"
+                className="bg-white border border-silver-400/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-5 hover:border-accent-primary/50 hover:shadow-md transition-all"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-2xl">{p.icon}</span>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-accent-primary/20 text-accent-primary border border-accent-primary/30">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300">
                       {p.badge}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-base text-[#EEE9DF]">{p.title}</h3>
-                    <p className="text-xs text-text-muted mt-1 leading-relaxed">{p.desc}</p>
+                    <h3 className="font-bold text-base text-silver-900">{p.title}</h3>
+                    <p className="text-xs text-silver-700 mt-1 leading-relaxed">{p.desc}</p>
                   </div>
 
                   {/* Flow Diagram */}
                   <div className="space-y-1.5 pt-2">
-                    <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider block">Execution Stages:</span>
+                    <span className="text-[10px] font-mono text-silver-700 uppercase tracking-wider block">Execution Stages:</span>
                     <div className="flex flex-col gap-1.5">
                       {p.steps.map((st, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs font-mono text-text-primary/80 bg-canvas-dark/50 px-2.5 py-1.5 rounded-lg border border-surface-muted/10">
-                          <span className="w-4 h-4 rounded-full bg-surface-primary flex items-center justify-center text-[10px] text-accent-primary font-bold">
+                        <div key={idx} className="flex items-center gap-2 text-xs font-mono text-silver-900 bg-silver-50 px-2.5 py-1.5 rounded-lg border border-silver-200">
+                          <span className="w-4 h-4 rounded-full bg-white border border-silver-300 flex items-center justify-center text-[10px] text-accent-primary font-bold shadow-xs">
                             {idx + 1}
                           </span>
                           <span>{st}</span>
@@ -540,12 +769,12 @@
 
                   {/* Input Parameter */}
                   <div className="space-y-1.5 pt-2">
-                    <label className="text-[11px] font-mono text-text-muted uppercase tracking-wider block">Pipeline Prompt:</label>
+                    <label className="text-[11px] font-mono text-silver-700 uppercase tracking-wider block">Pipeline Prompt:</label>
                     <input
                       type="text"
                       value={pipelineCmds[p.id]}
                       onChange={e => setPipelineCmds({ ...pipelineCmds, [p.id]: e.target.value })}
-                      className="w-full bg-canvas-dark border border-surface-muted/30 rounded-lg px-3 py-2 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
+                      className="w-full bg-silver-50 border border-silver-300 rounded-lg px-3 py-2 text-xs font-mono text-silver-900 focus:outline-none focus:border-accent-primary focus:bg-white"
                     />
                   </div>
                 </div>
@@ -553,7 +782,7 @@
                 <button
                   onClick={() => handleStart(p.id)}
                   disabled={loading}
-                  className="w-full py-2.5 rounded-xl bg-accent-primary hover:bg-[#ffa347] text-text-onLight font-bold text-xs shadow-lg shadow-accent-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white font-bold text-xs shadow-md shadow-accent-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <span>Launch Pipeline</span>
                   <span>&rarr;</span>
@@ -589,7 +818,7 @@
 
       if (loading && !run) {
         return (
-          <div className="p-12 text-center text-xs font-mono text-text-muted">
+          <div className="p-12 text-center text-xs font-mono text-silver-700">
             Loading run details for #{runId}...
           </div>
         );
@@ -598,19 +827,19 @@
       return (
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-surface-muted/20 pb-5">
+          <div className="flex items-center justify-between border-b border-silver-500/40 pb-5">
             <div className="flex items-center gap-4">
               <button
                 onClick={onBack}
-                className="px-3 py-1.5 rounded-xl bg-surface-primary hover:bg-surface-primary/80 text-xs font-mono font-bold text-accent-primary transition-all"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-silver-100 border border-silver-300 text-xs font-mono font-bold text-accent-primary transition-all shadow-xs"
               >
                 &larr; Back to Pipelines
               </button>
               <div>
-                <h2 className="text-xl font-extrabold text-[#EEE9DF] font-mono">
+                <h2 className="text-xl font-extrabold text-silver-900 font-mono">
                   Run #{runId.slice(0, 8)}
                 </h2>
-                <span className="text-xs text-text-muted font-mono">Pipeline: {run?.pipeline_name || 'Workflow'}</span>
+                <span className="text-xs text-silver-700 font-mono">Pipeline: {run?.pipeline_name || 'Workflow'}</span>
               </div>
             </div>
             <StatusPill status={run?.status || 'running'} />
@@ -623,33 +852,34 @@
             </h3>
 
             {(!run?.steps || run.steps.length === 0) ? (
-              <div className="p-8 rounded-2xl bg-surface-primary/40 border border-surface-muted/20 text-center text-xs font-mono text-text-muted">
+              <div className="p-8 rounded-2xl bg-white border border-silver-300 text-center text-xs font-mono text-silver-700 shadow-sm">
                 Executing first step...
               </div>
             ) : (
               <div className="space-y-3">
                 {run.steps.map((st, i) => (
-                  <div key={i} className="bg-surface-primary/80 border border-surface-muted/20 rounded-2xl p-5 shadow-lg space-y-3">
+                  <div key={i} className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent-primary text-text-onLight flex items-center justify-center font-bold text-xs">
+                        <span className="w-6 h-6 rounded-full bg-accent-primary text-white flex items-center justify-center font-bold text-xs shadow-xs">
                           {st.step_index + 1}
                         </span>
                         <div>
-                          <span className="font-bold text-sm text-[#EEE9DF] font-mono">{st.step_name}</span>
-                          <span className="text-xs text-text-muted font-mono block">Agent: {st.agent}</span>
+                          <span className="font-bold text-sm text-silver-900 font-mono">{st.step_name}</span>
+                          <span className="text-xs text-silver-700 font-mono block">Agent: {st.agent}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs font-mono text-text-muted">{st.latency_ms}ms</span>
+                        <span className="text-xs font-mono text-silver-600">{st.latency_ms}ms</span>
                         <StatusPill status={st.status} size="sm" />
                       </div>
                     </div>
 
                     {st.output_data && (
-                      <div className="bg-canvas-dark rounded-xl p-3.5 border border-surface-muted/15 font-mono text-xs text-[#EEE9DF] whitespace-pre-wrap max-h-48 overflow-y-auto">
-                        {st.output_data}
-                      </div>
+                      <div
+                        className="prose-output bg-silver-50 rounded-xl p-4 border border-silver-200 text-xs max-h-56 overflow-y-auto"
+                        dangerouslySetInnerHTML={{ __html: renderFormattedMarkdown(st.output_data) }}
+                      />
                     )}
                   </div>
                 ))}
@@ -698,25 +928,25 @@
       return (
         <div className="space-y-6">
           {/* Header */}
-          <div className="border-b border-surface-muted/20 pb-5 space-y-2">
+          <div className="border-b border-silver-500/40 pb-5 space-y-2">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-extrabold text-[#EEE9DF] tracking-tight flex items-center gap-2.5">
+                <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
                   <span>🛡️</span> Human-in-the-Loop Safety Gate
                 </h2>
-                <p className="text-sm text-text-muted mt-1">
+                <p className="text-sm text-silver-800 mt-1">
                   Sensitive actions queue requiring explicit human authorization. Callers cannot substitute payloads at execution time.
                 </p>
               </div>
 
               {/* Status Filter Tabs */}
-              <div className="flex bg-surface-primary p-1 rounded-xl border border-surface-muted/30">
+              <div className="flex bg-white p-1 rounded-xl border border-silver-300 shadow-xs">
                 {['pending', 'approved', 'executed', 'rejected', 'all'].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setFilter(tab)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-mono uppercase font-bold transition-all ${
-                      filter === tab ? 'bg-accent-primary text-text-onLight shadow' : 'text-text-muted hover:text-text-primary'
+                      filter === tab ? 'bg-accent-primary text-white shadow-xs' : 'text-silver-700 hover:text-silver-950'
                     }`}
                   >
                     {tab}
@@ -726,7 +956,7 @@
             </div>
 
             {/* Zero-Parameter Safety Notice */}
-            <div className="p-3 rounded-xl bg-canvas-dark/60 border border-surface-muted/20 text-xs font-mono text-accent-primary flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs font-mono text-amber-900 flex items-center gap-2">
               <span>🔒</span>
               <span>
                 <strong>Zero-Parameter Guarantee:</strong> `execute_approved(id)` takes no payload argument. The database record is the immutable source of truth.
@@ -736,45 +966,45 @@
 
           {/* Cards List */}
           {approvals.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-surface-primary/30 border border-surface-muted/20 space-y-3">
+            <div className="p-12 text-center rounded-2xl bg-white border border-silver-300 space-y-3 shadow-sm">
               <span className="text-3xl">🛡️</span>
-              <p className="text-sm font-mono text-text-muted">No approval records matching filter "{filter}".</p>
+              <p className="text-sm font-mono text-silver-700">No approval records matching filter "{filter}".</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {approvals.map(appr => (
-                <div key={appr.id} className="bg-surface-primary/90 border border-surface-muted/25 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between">
+                <div key={appr.id} className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-accent-primary uppercase px-2 py-0.5 rounded bg-canvas-dark">
+                      <span className="font-mono text-xs font-bold text-accent-primary uppercase px-2.5 py-0.5 rounded bg-amber-50 border border-amber-200">
                         {appr.action_type}
                       </span>
                       <StatusPill status={appr.status} size="sm" />
                     </div>
 
-                    <div className="text-xs font-mono text-text-muted">
+                    <div className="text-xs font-mono text-silver-700">
                       ID: #{appr.id.slice(0, 10)}... • Created: {new Date(appr.created_at).toLocaleTimeString()}
                     </div>
 
                     {/* Formatted Canonical Payload Box */}
-                    <div className="bg-canvas-dark rounded-xl p-3 border border-surface-muted/15 font-mono text-[11px] text-text-primary whitespace-pre-wrap max-h-36 overflow-y-auto">
+                    <div className="bg-silver-50 rounded-xl p-3 border border-silver-200 font-mono text-[11px] text-silver-900 whitespace-pre-wrap max-h-36 overflow-y-auto">
                       {JSON.stringify(appr.payload, null, 2)}
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-2 border-t border-surface-muted/15 flex items-center justify-end gap-2">
+                  <div className="pt-2 border-t border-silver-200 flex items-center justify-end gap-2">
                     {appr.status === 'pending' && (
                       <>
                         <button
                           onClick={() => act('reject', appr.id)}
-                          className="px-3.5 py-1.5 rounded-lg bg-state-danger/20 hover:bg-state-danger text-[#B4453A] hover:text-white border border-state-danger/30 text-xs font-mono font-bold transition-all"
+                          className="px-3.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-700 hover:text-white border border-red-200 text-xs font-mono font-bold transition-all"
                         >
                           Reject
                         </button>
                         <button
                           onClick={() => act('approve', appr.id)}
-                          className="px-3.5 py-1.5 rounded-lg bg-state-success hover:bg-[#4d755b] text-white text-xs font-mono font-bold shadow transition-all"
+                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono font-bold shadow-xs transition-all"
                         >
                           Approve
                         </button>
@@ -783,7 +1013,7 @@
                     {appr.status === 'approved' && (
                       <button
                         onClick={() => act('execute', appr.id)}
-                        className="px-4 py-2 rounded-lg bg-accent-primary hover:bg-[#ffa347] text-text-onLight text-xs font-mono font-bold shadow-lg flex items-center gap-1.5 transition-all"
+                        className="px-4 py-2 rounded-lg bg-accent-primary hover:bg-accent-hover text-white text-xs font-mono font-bold shadow-md flex items-center gap-1.5 transition-all"
                       >
                         <span>⚡</span>
                         <span>Execute Approved</span>
@@ -837,19 +1067,19 @@
       return (
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-muted/20 pb-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-silver-500/40 pb-5">
             <div>
-              <h2 className="text-2xl font-extrabold text-[#EEE9DF] tracking-tight flex items-center gap-2.5">
+              <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
                 <span>📊</span> Router Benchmark & Accuracy Harness
               </h2>
-              <p className="text-sm text-text-muted mt-1">
+              <p className="text-sm text-silver-800 mt-1">
                 27-command ground-truth classification benchmark with empirical confusion matrix and prompt staleness tracking.
               </p>
             </div>
             <button
               onClick={handleRunBenchmark}
               disabled={running}
-              className="px-4 py-2 rounded-xl bg-accent-primary hover:bg-[#ffa347] text-text-onLight font-bold text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-accent-primary hover:bg-accent-hover text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {running ? "Benchmarking..." : "Run Benchmark Now"}
             </button>
@@ -857,65 +1087,65 @@
 
           {/* Metric KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-surface-primary/80 border border-surface-muted/25 rounded-2xl p-5 shadow-lg">
-              <span className="text-xs font-mono text-text-muted uppercase">Overall Accuracy</span>
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Overall Accuracy</span>
               <div className="text-3xl font-extrabold text-accent-primary font-mono mt-1">
                 {m ? `${(m.accuracy * 100).toFixed(1)}%` : '88.9%'}
               </div>
-              <span className="text-[11px] text-text-muted font-mono mt-0.5 block">{m ? `${m.correct} / ${m.total} correct` : '24 / 27 correct'}</span>
+              <span className="text-[11px] text-silver-700 font-mono mt-0.5 block">{m ? `${m.correct} / ${m.total} correct` : '24 / 27 correct'}</span>
             </div>
 
-            <div className="bg-surface-primary/80 border border-surface-muted/25 rounded-2xl p-5 shadow-lg">
-              <span className="text-xs font-mono text-text-muted uppercase">Benchmark Suite</span>
-              <div className="text-3xl font-extrabold text-[#EEE9DF] font-mono mt-1">27</div>
-              <span className="text-[11px] text-text-muted font-mono mt-0.5 block">eval/fixed_set.json</span>
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Benchmark Suite</span>
+              <div className="text-3xl font-extrabold text-silver-900 font-mono mt-1">27</div>
+              <span className="text-[11px] text-silver-700 font-mono mt-0.5 block">eval/fixed_set.json</span>
             </div>
 
-            <div className="bg-surface-primary/80 border border-surface-muted/25 rounded-2xl p-5 shadow-lg">
-              <span className="text-xs font-mono text-text-muted uppercase">Staleness State</span>
-              <div className="text-2xl font-extrabold text-state-success font-mono mt-1.5 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-state-success" />
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Staleness State</span>
+              <div className="text-2xl font-extrabold text-emerald-700 font-mono mt-1.5 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
                 <span>CLEAN</span>
               </div>
-              <span className="text-[11px] text-text-muted font-mono mt-0.5 block">Prompt in sync with HEAD</span>
+              <span className="text-[11px] text-silver-700 font-mono mt-0.5 block">Prompt in sync with HEAD</span>
             </div>
 
-            <div className="bg-surface-primary/80 border border-surface-muted/25 rounded-2xl p-5 shadow-lg">
-              <span className="text-xs font-mono text-text-muted uppercase">Router Engine</span>
-              <div className="text-xl font-bold text-[#EEE9DF] font-mono mt-2 truncate">groq_router</div>
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm">
+              <span className="text-xs font-mono text-silver-600 uppercase">Router Engine</span>
+              <div className="text-xl font-bold text-silver-900 font-mono mt-2 truncate">groq_router</div>
               <span className="text-[11px] text-accent-primary font-mono mt-0.5 block">Circuit Guarded</span>
             </div>
           </div>
 
           {/* Confusion Matrix Table */}
-          <div className="bg-canvas-light text-text-onLight rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 className="font-bold text-sm text-surface-primary font-mono uppercase tracking-wider">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-silver-400/80 space-y-4">
+            <h3 className="font-bold text-sm text-silver-900 font-mono uppercase tracking-wider">
               Empirical Confusion Matrix Heatmap
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-center border-collapse text-xs font-mono">
                 <thead>
-                  <tr className="border-b border-surface-muted/40">
-                    <th className="p-2 text-left text-surface-primary/80 font-bold">Expected \ Predicted</th>
+                  <tr className="border-b border-silver-300">
+                    <th className="p-2 text-left text-silver-700 font-bold">Expected \ Predicted</th>
                     {predicted.map(p => (
-                      <th key={p} className="p-2 text-surface-primary font-bold capitalize">
+                      <th key={p} className="p-2 text-silver-900 font-bold capitalize">
                         {p.replace('_agent', '')}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-surface-muted/30">
+                <tbody className="divide-y divide-silver-200">
                   {expected.map(exp => (
                     <tr key={exp}>
-                      <td className="p-2 text-left font-bold text-surface-primary capitalize bg-surface-muted/20">
+                      <td className="p-2 text-left font-bold text-silver-900 capitalize bg-silver-50">
                         {exp.replace('_agent', '')}
                       </td>
                       {predicted.map(pred => {
                         const val = matrix[exp]?.[pred] || 0;
                         const isDiag = exp === pred;
-                        let style = 'bg-white/40 text-surface-primary/60';
+                        let style = 'bg-silver-50 text-silver-400';
                         if (val > 0) {
-                          style = isDiag ? 'bg-accent-primary text-text-onLight font-black shadow' : 'bg-state-warning/30 text-surface-primary font-bold';
+                          style = isDiag ? 'bg-accent-primary text-white font-black shadow-xs' : 'bg-amber-100 text-amber-900 font-bold';
                         }
                         return (
                           <td key={pred} className="p-1">
@@ -931,14 +1161,14 @@
           </div>
 
           {/* Per-Agent Precision Recall Table */}
-          <div className="bg-canvas-light text-text-onLight rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 className="font-bold text-sm text-surface-primary font-mono uppercase tracking-wider">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-silver-400/80 space-y-4">
+            <h3 className="font-bold text-sm text-silver-900 font-mono uppercase tracking-wider">
               Per-Agent Precision, Recall & F1
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
                 <thead>
-                  <tr className="border-b border-surface-muted/40 text-surface-primary/80">
+                  <tr className="border-b border-silver-300 text-silver-700">
                     <th className="p-2.5">Agent</th>
                     <th className="p-2.5 text-right">Precision</th>
                     <th className="p-2.5 text-right">Recall</th>
@@ -946,10 +1176,10 @@
                     <th className="p-2.5 text-right">True Positives</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-surface-muted/20">
+                <tbody className="divide-y divide-silver-200">
                   {Object.entries(m?.per_agent || {}).map(([agent, ag]) => (
                     <tr key={agent}>
-                      <td className="p-2.5 font-bold text-surface-primary">{agent}</td>
+                      <td className="p-2.5 font-bold text-silver-900">{agent}</td>
                       <td className="p-2.5 text-right font-bold">{(ag.precision * 100).toFixed(1)}%</td>
                       <td className="p-2.5 text-right font-bold">{(ag.recall * 100).toFixed(1)}%</td>
                       <td className="p-2.5 text-right font-black text-accent-primary">{(ag.f1 * 100).toFixed(1)}%</td>
@@ -994,39 +1224,39 @@
 
       return (
         <div className="space-y-6">
-          <div className="border-b border-surface-muted/20 pb-5">
-            <h2 className="text-2xl font-extrabold text-[#EEE9DF] tracking-tight flex items-center gap-2.5">
+          <div className="border-b border-silver-500/40 pb-5">
+            <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
               <span>🩺</span> System Diagnostics & Guardrails
             </h2>
-            <p className="text-sm text-text-muted mt-1">
+            <p className="text-sm text-silver-800 mt-1">
               Live telemetry for circuit breakers, storage engines, and security invariants.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Circuit Breaker Health Card */}
-            <div className="bg-surface-primary/80 border border-surface-muted/25 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm font-mono text-accent-primary uppercase">Groq Router Circuit Breaker</span>
                 <StatusPill status={circuit?.state || 'closed'} />
               </div>
 
-              <p className="text-xs text-text-muted leading-relaxed">
+              <p className="text-xs text-silver-700 leading-relaxed">
                 Protects the application from cascading LLM timeout hangs. If 3 consecutive failures occur, the circuit opens for 30 seconds to fail-fast.
               </p>
 
-              <div className="p-3.5 rounded-xl bg-canvas-dark/60 border border-surface-muted/20 space-y-2 text-xs font-mono">
+              <div className="p-3.5 rounded-xl bg-silver-50 border border-silver-200 space-y-2 text-xs font-mono">
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Guarded Service:</span>
-                  <span className="text-[#EEE9DF] font-bold">{circuit?.service || 'groq_router'}</span>
+                  <span className="text-silver-700">Guarded Service:</span>
+                  <span className="text-silver-900 font-bold">{circuit?.service || 'groq_router'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Failure Threshold:</span>
-                  <span className="text-[#EEE9DF]">{circuit?.failure_threshold || 3} consecutive</span>
+                  <span className="text-silver-700">Failure Threshold:</span>
+                  <span className="text-silver-900">{circuit?.failure_threshold || 3} consecutive</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Consecutive Failures:</span>
-                  <span className={circuit?.consecutive_failures > 0 ? "text-state-danger font-bold" : "text-state-success"}>
+                  <span className="text-silver-700">Consecutive Failures:</span>
+                  <span className={circuit?.consecutive_failures > 0 ? "text-red-600 font-bold" : "text-emerald-700 font-bold"}>
                     {circuit?.consecutive_failures || 0}
                   </span>
                 </div>
@@ -1034,7 +1264,7 @@
 
               <button
                 onClick={handleReset}
-                className="w-full py-2.5 rounded-xl bg-surface-primary hover:bg-canvas-dark border border-surface-muted/30 text-xs font-mono font-bold text-accent-primary transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl bg-silver-100 hover:bg-silver-200 border border-silver-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center justify-center gap-2"
               >
                 <span>Reset Circuit Breaker</span>
                 <span>↻</span>
@@ -1042,20 +1272,20 @@
             </div>
 
             {/* Architecture Guarantees */}
-            <div className="bg-surface-primary/80 border border-surface-muted/25 rounded-2xl p-6 shadow-xl space-y-4">
-              <span className="font-bold text-sm font-mono text-[#EEE9DF] uppercase">Production Guarantees</span>
+            <div className="bg-white border border-silver-400/80 rounded-2xl p-6 shadow-sm space-y-4">
+              <span className="font-bold text-sm font-mono text-silver-900 uppercase">Production Guarantees</span>
               <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-canvas-dark/40 border border-surface-muted/15 space-y-1">
-                  <span className="text-xs font-bold text-state-success font-mono">✓ Zero SDK Leakage</span>
-                  <p className="text-[11px] text-text-muted">Direct email/publishing SDK imports are forbidden in agents, verified by AST tests.</p>
+                <div className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1">
+                  <span className="text-xs font-bold text-emerald-700 font-mono">✓ Zero SDK Leakage</span>
+                  <p className="text-[11px] text-silver-700">Direct email/publishing SDK imports are forbidden in agents, verified by AST tests.</p>
                 </div>
-                <div className="p-3 rounded-xl bg-canvas-dark/40 border border-surface-muted/15 space-y-1">
-                  <span className="text-xs font-bold text-state-success font-mono">✓ Unbypassable CAS Concurrency</span>
-                  <p className="text-[11px] text-text-muted">Zero payload parameter allowed during execution. Replay attacks fail fast.</p>
+                <div className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1">
+                  <span className="text-xs font-bold text-emerald-700 font-mono">✓ Unbypassable CAS Concurrency</span>
+                  <p className="text-[11px] text-silver-700">Zero payload parameter allowed during execution. Replay attacks fail fast.</p>
                 </div>
-                <div className="p-3 rounded-xl bg-canvas-dark/40 border border-surface-muted/15 space-y-1">
-                  <span className="text-xs font-bold text-state-success font-mono">✓ SSRF Allowlisted PDF Fetch</span>
-                  <p className="text-[11px] text-text-muted">Research agent strictly allowlists arXiv hostnames with size and timeout ceilings.</p>
+                <div className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1">
+                  <span className="text-xs font-bold text-emerald-700 font-mono">✓ SSRF Allowlisted PDF Fetch</span>
+                  <p className="text-[11px] text-silver-700">Research agent strictly allowlists arXiv hostnames with size and timeout ceilings.</p>
                 </div>
               </div>
             </div>
@@ -1070,6 +1300,18 @@
       const [runId, setRunId] = useState(null);
       const [pendingCount, setPendingCount] = useState(0);
       const [circuitState, setCircuitState] = useState('CLOSED');
+      
+      // Silver shade palette options
+      const [silverShade, setSilverShade] = useState('medium'); // 'light' (#DCE2E9) | 'medium' (#B0B8C4) | 'deep' (#96A0AF)
+
+      useEffect(() => {
+        const bgColors = {
+          light: '#DCE2E9',
+          medium: '#B0B8C4', // True metallic silver default
+          deep: '#96A0AF'
+        };
+        document.body.style.backgroundColor = bgColors[silverShade] || '#B0B8C4';
+      }, [silverShade]);
 
       useEffect(() => {
         const poll = async () => {
@@ -1096,32 +1338,32 @@
       ];
 
       return (
-        <div className="min-h-screen flex flex-col bg-canvas-dark text-text-primary">
+        <div className="min-h-screen flex flex-col text-text-primary">
           {/* Top Executive Header */}
-          <header className="sticky top-0 z-50 bg-[#1B2632]/95 border-b border-surface-muted/20 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
+          <header className="sticky top-0 z-50 bg-white/95 border-b border-silver-400/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-6">
               {/* Brand Emblem */}
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-accent-primary flex items-center justify-center text-text-onLight text-lg font-black shadow-md shadow-accent-primary/25">
+                <div className="w-9 h-9 rounded-xl bg-accent-primary flex items-center justify-center text-white text-lg font-black shadow-sm shadow-accent-primary/25">
                   ⚡
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h1 className="font-extrabold text-base text-[#EEE9DF] tracking-tight leading-none">
+                    <h1 className="font-extrabold text-base text-silver-900 tracking-tight leading-none">
                       Orchestrator
                     </h1>
-                    <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-surface-primary text-accent-primary border border-surface-muted/20">
+                    <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-silver-100 text-accent-primary border border-silver-300">
                       CONTROL PLANE
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-text-muted block mt-0.5">
+                  <span className="text-[10px] font-mono text-silver-600 block mt-0.5">
                     Multi-Agent Core Engine
                   </span>
                 </div>
               </div>
 
               {/* Navigation Tabs */}
-              <nav className="hidden md:flex items-center gap-1.5 ml-4 bg-surface-primary/60 p-1 rounded-xl border border-surface-muted/20">
+              <nav className="hidden md:flex items-center gap-1.5 ml-4 bg-silver-100/90 p-1 rounded-xl border border-silver-300">
                 {navItems.map(item => {
                   const active = tab === item.id;
                   return (
@@ -1129,13 +1371,13 @@
                       key={item.id}
                       onClick={() => { setTab(item.id); if (item.id === 'pipelines') setRunId(null); }}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        active ? 'bg-accent-primary text-text-onLight shadow-md font-bold' : 'text-text-muted hover:text-text-primary hover:bg-canvas-dark/40'
+                        active ? 'bg-accent-primary text-white shadow-xs font-bold' : 'text-silver-700 hover:text-silver-950 hover:bg-white/60'
                       }`}
                     >
                       <span>{item.icon}</span>
                       <span>{item.label}</span>
                       {item.badge && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${active ? 'bg-canvas-dark text-accent-primary' : 'bg-state-warning text-white'}`}>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${active ? 'bg-white text-accent-primary' : 'bg-amber-600 text-white'}`}>
                           {item.badge}
                         </span>
                       )}
@@ -1145,17 +1387,39 @@
               </nav>
             </div>
 
-            {/* Right Health & Circuit Capsule */}
+            {/* Right Health, Tone Selector & Circuit Capsule */}
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-primary/80 border border-surface-muted/20 text-xs font-mono">
+              {/* Silver Shade Selector */}
+              <div className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-xl bg-silver-100 border border-silver-300 text-[11px] font-mono">
+                <span className="text-silver-600 mr-1">Silver:</span>
+                {[
+                  { id: 'light', label: 'Light' },
+                  { id: 'medium', label: 'Silver' },
+                  { id: 'deep', label: 'Darker' }
+                ].map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSilverShade(s.id)}
+                    className={`px-2 py-0.5 rounded-md transition-all ${
+                      silverShade === s.id
+                        ? 'bg-white text-silver-900 font-bold shadow-xs'
+                        : 'text-silver-600 hover:text-silver-900'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-silver-50 border border-silver-300 text-xs font-mono">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-state-success animate-pulse" />
-                  <span className="text-text-muted">Core API: Online</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                  <span className="text-silver-700">Core API: Online</span>
                 </span>
-                <span className="text-surface-muted/30">|</span>
+                <span className="text-silver-300">|</span>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-text-muted">Circuit:</span>
-                  <span className={circuitState === 'CLOSED' ? "text-state-success font-bold" : "text-state-danger font-bold"}>
+                  <span className="text-silver-700">Circuit:</span>
+                  <span className={circuitState === 'CLOSED' ? "text-emerald-700 font-bold" : "text-red-600 font-bold"}>
                     {circuitState}
                   </span>
                 </span>
@@ -1165,7 +1429,7 @@
                 href="/docs"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 rounded-xl bg-surface-primary hover:bg-surface-primary/80 border border-surface-muted/30 text-xs font-mono text-accent-primary font-bold transition-all"
+                className="px-3 py-1.5 rounded-xl bg-silver-50 hover:bg-silver-100 border border-silver-300 text-xs font-mono text-accent-primary font-bold transition-all shadow-xs"
               >
                 Docs &rarr;
               </a>
@@ -1173,13 +1437,13 @@
           </header>
 
           {/* Mobile Tab Bar */}
-          <div className="md:hidden flex overflow-x-auto bg-surface-primary border-b border-surface-muted/20 p-2 gap-1">
+          <div className="md:hidden flex overflow-x-auto bg-white border-b border-silver-300 p-2 gap-1">
             {navItems.map(item => (
               <button
                 key={item.id}
                 onClick={() => { setTab(item.id); if (item.id === 'pipelines') setRunId(null); }}
                 className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                  tab === item.id ? 'bg-accent-primary text-text-onLight' : 'text-text-muted'
+                  tab === item.id ? 'bg-accent-primary text-white' : 'text-silver-700'
                 }`}
               >
                 <span>{item.icon}</span>
@@ -1199,8 +1463,8 @@
           </main>
 
           {/* Sleek Minimal Footer */}
-          <footer className="border-t border-surface-muted/15 py-4 px-6 text-center text-xs font-mono text-text-muted">
-            Orchestrator Agent Core Service • MP072 Palette • Audited Concurrency & Security Invariants
+          <footer className="border-t border-silver-400/60 py-4 px-6 text-center text-xs font-mono text-silver-700 bg-white/40">
+            Orchestrator Agent Core Service • Metallic Silver Executive Plane • Audited Concurrency & Security Invariants
           </footer>
         </div>
       );
