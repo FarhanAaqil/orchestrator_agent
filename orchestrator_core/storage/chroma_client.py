@@ -1,8 +1,8 @@
 """
 orchestrator_core/storage/chroma_client.py
 
-Scoped ChromaDB client wrapper for the four supported v2 agents:
-Career, Research, Growth/Content, and Critic.
+Scoped ChromaDB client wrapper for the supported orchestrator agents:
+Career, Research, Growth/Content, Critic, Info, Email, GitHub, LinkedIn, and General Chat.
 
 Ensures lazy initialization without import-time side effects, and prevents
 unsupported experimental agents from creating or accessing collections.
@@ -17,6 +17,11 @@ SUPPORTED_AGENTS = {
     "research_agent",
     "growth_content_agent",
     "critic_agent",
+    "info_agent",
+    "email_agent",
+    "github_agent",
+    "linkedin_agent",
+    "general_chat_agent",
 }
 
 
@@ -32,13 +37,13 @@ def get_chroma_client(persist_directory: Optional[str] = None) -> Any:
 
 def get_agent_collection(agent_name: str, client: Optional[Any] = None) -> Any:
     """
-    Retrieve or create a collection for a supported v2 agent.
+    Retrieve or create a collection for a supported agent.
     Raises ValueError if an unsupported agent name is provided.
     """
     normalized_name = agent_name.strip().lower()
     if normalized_name not in SUPPORTED_AGENTS:
         raise ValueError(
-            f"Agent '{agent_name}' is not supported in v2. "
+            f"Agent '{agent_name}' is not supported. "
             f"ChromaDB access is strictly scoped to: {sorted(SUPPORTED_AGENTS)}"
         )
 

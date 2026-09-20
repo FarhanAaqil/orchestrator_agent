@@ -44,9 +44,13 @@ def clear_router_cache() -> None:
 SUPPORTED_AGENTS = {
     "career_agent": "Resume tailoring, skill gaps, interview prep, career roadmaps, cover letters.",
     "research_agent": "Academic paper writing, journal search, research summaries, ArXiv paper analysis.",
-    "growth_content_agent": "LinkedIn posts, Twitter threads, blog posts, devlogs, content calendars.",
-    "critic_agent": "Quality critique and improvement of cover letters, posts, papers, emails.",
-    "info_agent": "System architecture, how agents/pipelines/approvals work, Farhan Aaqil's projects portfolio, documentation, and general conversation/talk.",
+    "growth_content_agent": "Technical blog posts, Dev.to/Hashnode publishing, devlogs, technical writing, Twitter threads.",
+    "critic_agent": "Quality critique and improvement of cover letters, posts, papers, emails, and code.",
+    "info_agent": "System architecture, how agents/pipelines/approvals work, Farhan Aaqil's projects portfolio, and documentation.",
+    "email_agent": "Checking email inbox, reading unread messages, drafting recruiter outreach, and sending emails.",
+    "github_agent": "GitHub repositories, user profiles, commit history, README generation, commit messages, creating issues or PR comments.",
+    "linkedin_agent": "LinkedIn networking, recruiter discovery, 300-character connection notes, cold DMs, headline/profile optimization, and LinkedIn posts.",
+    "general_chat_agent": "Casual conversation, general brainstorming, high-level technical advice, chitchat, greetings, and Toji companion.",
 }
 
 _ROUTER_SYSTEM_PROMPT = """\
@@ -80,6 +84,7 @@ def _build_system_prompt() -> str:
 def _heuristic_classify(command: str) -> dict:
     """Deterministic heuristic fallback when Groq API key is invalid or unavailable."""
     lower = command.lower().strip()
+
     # Ambiguous commands
     if any(k in lower for k in ("what should i do", "what next", "help me decide", "which one")):
         return {
@@ -87,13 +92,31 @@ def _heuristic_classify(command: str) -> dict:
             "confidence": 0.45,
             "reasoning": "Ambiguous input — requires user clarification between career and growth pathways.",
         }
-    # Info / general / projects / system working keywords
-    if any(k in lower for k in ("who are you", "what can you do", "project", "projects", "architecture", "how does", "how do", "how it works", "working", "about", "info", "explain", "agents", "hi", "hello", "hey", "tell me about", "common talk")):
+
+    # Email agent keywords
+    if any(k in lower for k in ("email", "inbox", "gmail", "mail", "send mail", "send email", "unread emails", "check inbox")):
         return {
-            "agent": "info_agent",
+            "agent": "email_agent",
             "confidence": 0.95,
-            "reasoning": "Detected system documentation, project inquiry, or general conversational query.",
+            "reasoning": "Detected email, inbox, or outreach intent from keywords.",
         }
+
+    # GitHub agent keywords
+    if any(k in lower for k in ("github", "repo", "repos", "repository", "git commit", "pull request", "open issue", "github issue")):
+        return {
+            "agent": "github_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected GitHub repository or development workflow intent from keywords.",
+        }
+
+    # LinkedIn agent keywords
+    if any(k in lower for k in ("linkedin", "connection note", "connect note", "recruiter", "cold dm", "inmail", "networking note")):
+        return {
+            "agent": "linkedin_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected LinkedIn networking or recruiter search intent from keywords.",
+        }
+
     # Career keywords
     if any(k in lower for k in ("resume", "cv", "job", "cover letter", "cover-letter", "interview", "career", "skill", "internship", "application")):
         return {
@@ -101,6 +124,7 @@ def _heuristic_classify(command: str) -> dict:
             "confidence": 0.95,
             "reasoning": "Detected resume/career intent from keywords.",
         }
+
     # Research keywords
     if any(k in lower for k in ("paper", "arxiv", "academic", "research", "journal", "literature", "predatory", "cite", "citation")):
         return {
@@ -108,6 +132,7 @@ def _heuristic_classify(command: str) -> dict:
             "confidence": 0.95,
             "reasoning": "Detected academic research intent from keywords.",
         }
+
     # Growth keywords
     if any(k in lower for k in ("blog", "dev.to", "devto", "hashnode", "post", "tweet", "twitter", "thread", "devlog", "content")):
         return {
@@ -115,6 +140,7 @@ def _heuristic_classify(command: str) -> dict:
             "confidence": 0.95,
             "reasoning": "Detected technical writing/growth intent from keywords.",
         }
+
     # Critic keywords
     if any(k in lower for k in ("critique", "score", "review", "feedback", "grade", "evaluate", "rate")):
         return {
@@ -122,11 +148,28 @@ def _heuristic_classify(command: str) -> dict:
             "confidence": 0.92,
             "reasoning": "Detected evaluation/critique intent from keywords.",
         }
-    # Default fallback to info agent for general conversation
+
+    # Info / portfolio / system documentation keywords
+    if any(k in lower for k in ("farhan aaqil", "portfolio", "projects", "architecture", "how does", "how do", "how it works", "working", "about the system", "system doc")):
+        return {
+            "agent": "info_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected system documentation or project portfolio inquiry.",
+        }
+
+    # General chat / greetings keywords
+    if any(k in lower for k in ("hi", "hello", "hey", "who are you", "what can you do", "toji", "jarvis", "help me", "how are you", "good morning", "good evening", "chat")):
+        return {
+            "agent": "general_chat_agent",
+            "confidence": 0.95,
+            "reasoning": "Detected conversational greeting or general assistant query.",
+        }
+
+    # Default fallback to general chat agent for conversational queries
     return {
-        "agent": "info_agent",
-        "confidence": 0.70,
-        "reasoning": "General query routed to info agent.",
+        "agent": "general_chat_agent",
+        "confidence": 0.75,
+        "reasoning": "General query routed to general chat assistant.",
     }
 
 
