@@ -59,7 +59,7 @@ def _call_llm(prompt: str) -> str:
                 "When deploying multi-agent frameworks in enterprise environments, standard LLM tool calling has a fatal flaw: "
                 "payload substitution at execution time. If an agent hallucinates or an unauthorized caller passes parameters directly to an execution endpoint, safety gates are rendered meaningless.\n\n"
                 "### The Solution: Zero-Parameter CAS Execution\n\n"
-                "In Orchestrator v2, we solved this with atomic Compare-And-Set (CAS) concurrency on SQLite:\n\n"
+                "In Orchestrator, we solved this with atomic Compare-And-Set (CAS) concurrency on SQLite:\n\n"
                 "```python\n"
                 "# Caller passes ONLY the approval ID — zero payload allowed at execution time\n"
                 "execute_approved(approval_id, db)\n"

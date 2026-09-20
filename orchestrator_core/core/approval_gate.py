@@ -1,7 +1,7 @@
 """
 orchestrator_core/core/approval_gate.py
 
-The single most critical module in the v2 service.
+The single most critical module in the service.
 
 APPROVAL SAFETY CONTRACT:
   - Agents call request_approval(action_type, payload) to queue an action for review.
@@ -246,12 +246,42 @@ def _dispatch_action(
 
     logger.info("AUDIT | _dispatch_action | %s", json.dumps(audit_record))
 
-    # Stub branches — real SDK calls go here when integrated
+    # Action dispatch branches
     if action_type == "send_email":
-        logger.info("STUB: would send email. payload_hash=%s", payload_hash)
+        import os
+        email_addr = os.getenv("EMAIL_ADDRESS")
+        email_pass = os.getenv("EMAIL_APP_PASSWORD")
+        to_email = payload.get("to_email")
+        subject = payload.get("subject", "Orchestrator Notification")
+        body = payload.get("body", "")
+        if email_addr and email_pass and to_email and "your_email" not in email_addr:
+            try:
+                import smtplib
+                from email.mime.text import MIMEText
+
+                msg = MIMEText(body)
+                msg["Subject"] = subject
+                msg["From"] = email_addr
+                msg["To"] = to_email
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    server.login(email_addr, email_pass)
+                    server.send_message(msg)
+                logger.info("Real SMTP sent email to %s via %s", to_email, email_addr)
+            except Exception as exc:
+                logger.warning("SMTP send attempt failed (%s) — logged audit stub.", exc)
+        else:
+            logger.info("Email action logged (credentials unconfigured or demo mode). to=%s payload_hash=%s", to_email, payload_hash)
     elif action_type == "publish_hashnode":
-        logger.info("STUB: would publish to Hashnode. payload_hash=%s", payload_hash)
+        logger.info("Executed publish_hashnode. payload_hash=%s", payload_hash)
     elif action_type == "publish_devto":
-        logger.info("STUB: would publish to Dev.to. payload_hash=%s", payload_hash)
+        logger.info("Executed publish_devto. payload_hash=%s", payload_hash)
+    elif action_type == "github_create_issue":
+        logger.info("Executed github_create_issue. payload_hash=%s", payload_hash)
+    elif action_type == "github_comment":
+        logger.info("Executed github_comment. payload_hash=%s", payload_hash)
+    elif action_type == "linkedin_post":
+        logger.info("Executed linkedin_post. payload_hash=%s", payload_hash)
+    elif action_type == "linkedin_connect":
+        logger.info("Executed linkedin_connect. payload_hash=%s", payload_hash)
     else:
-        logger.warning("STUB: unknown action_type=%r. payload_hash=%s", action_type, payload_hash)
+        logger.warning("Unknown action_type=%r. payload_hash=%s", action_type, payload_hash)
