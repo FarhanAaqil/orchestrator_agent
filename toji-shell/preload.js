@@ -35,4 +35,12 @@ contextBridge.exposeInMainWorld('toji', {
   onAvatarState: (callback) => {
     ipcRenderer.on('avatar:set-state', (_event, state) => callback(state));
   },
+
+  /** Subscribe to voice toggle events triggered from tray or main */
+  onVoiceToggle: (callback) => {
+    ipcRenderer.on('toji:voice-toggle', () => callback());
+  },
+
+  /** Request voice toggle from renderer */
+  toggleVoice: () => ipcRenderer.send('toji:toggle-voice'),
 });

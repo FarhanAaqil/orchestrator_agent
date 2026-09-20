@@ -107,6 +107,11 @@ ipcMain.on('toji:avatar-state', (_event, state) => {
   if (wm) wm.setAvatarState(state); // 'idle' | 'thinking' | 'speaking'
 });
 
+ipcMain.on('toji:toggle-voice', () => {
+  const wm = WindowManager.getInstance();
+  if (wm) wm.toggleVoice();
+});
+
 ipcMain.handle('toji:get-api-base', () => {
   return sidecar.getApiBase();
 });

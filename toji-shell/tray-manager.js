@@ -56,22 +56,24 @@ class TrayManager {
   }
 
   _buildIcon() {
-    // Primary: local-drive PNG (avoids Google Drive file-lock), no resize —
-    // let Windows handle DPI scaling natively at the Win32 layer.
-    const LOCAL_ICON = 'C:\\Users\\aaqil\\toji-shell-deps\\toji-tray.png';
-    try {
-      const img = nativeImage.createFromPath(LOCAL_ICON);
-      if (!img.isEmpty()) return img;
-    } catch {}
+    // Windows requires .ico for Shell_NotifyIcon to prevent notify_icon.cc warnings
+    const candidatePaths = [
+      'C:\\Users\\aaqil\\toji-shell-deps\\toji-tray.ico',
+      path.join(__dirname, 'assets', 'toji-tray.ico'),
+      'C:\\Users\\aaqil\\toji-shell-deps\\toji-tray.png',
+      path.join(__dirname, 'assets', 'toji-tray.png'),
+    ];
 
-    // Fallback: PNG from toji-shell assets folder
-    try {
-      const ICON_PATH = path.join(__dirname, 'assets', 'toji-tray.png');
-      const img = nativeImage.createFromPath(ICON_PATH);
-      if (!img.isEmpty()) return img;
-    } catch {}
+    for (const p of candidatePaths) {
+      try {
+        if (require('fs').existsSync(p)) {
+          const img = nativeImage.createFromPath(p);
+          if (!img.isEmpty()) return img;
+        }
+      } catch {}
+    }
 
-    // Last resort: blank (tray still appears, just no visible icon)
+    // Fallback: blank
     return nativeImage.createEmpty();
   }
 
@@ -92,8 +94,16 @@ class TrayManager {
       },
       { type: 'separator' },
       {
-        label: 'Open Chat    (Alt+T)',
+        label: 'Open Chat Overlay (Alt+T)',
         click: () => this._wm.show(),
+      },
+      {
+        label: 'Open Executive Dashboard',
+        click: () => this._wm.createDashboard(),
+      },
+      {
+        label: 'Toggle Voice Mode',
+        click: () => this._wm.toggleVoice(),
       },
       {
         label: 'Open in Browser',

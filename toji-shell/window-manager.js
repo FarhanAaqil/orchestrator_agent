@@ -33,10 +33,11 @@ let _instance = null; // singleton reference
 
 class WindowManager {
   constructor({ dev = false } = {}) {
-    this._dev     = dev;
-    this._overlay = null;
-    this._avatar  = null;
-    this._visible = false;
+    this._dev       = dev;
+    this._overlay   = null;
+    this._avatar    = null;
+    this._dashboard = null;
+    this._visible   = false;
     _instance = this;
   }
 
@@ -106,7 +107,53 @@ class WindowManager {
       return { action: 'deny' };
     });
 
+    // Reposition avatar when overlay window moves
+    this._overlay.on('move', () => {
+      this._repositionAvatar();
+    });
+
     this._overlay.on('closed', () => { this._overlay = null; });
+  }
+
+  // ── Full Dashboard Window ───────────────────────────────────────────────────
+  createDashboard() {
+    if (this._dashboard && !this._dashboard.isDestroyed()) {
+      this._dashboard.show();
+      this._dashboard.focus();
+      return;
+    }
+
+    this._dashboard = new BrowserWindow({
+      width:           1280,
+      height:          850,
+      minWidth:        900,
+      minHeight:       600,
+      title:           'Toji — Executive Control Plane',
+      backgroundColor: '#B0B8C4',
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload:          path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration:  false,
+        sandbox:          true,
+        webSecurity:      true,
+      },
+    });
+
+    this._dashboard.loadURL(API_BASE);
+
+    this._dashboard.on('closed', () => {
+      this._dashboard = null;
+    });
+  }
+
+  toggleVoice() {
+    if (this._overlay && !this._overlay.isDestroyed()) {
+      this._overlay.webContents.send('toji:voice-toggle');
+    }
+    if (this._dashboard && !this._dashboard.isDestroyed()) {
+      this._dashboard.webContents.send('toji:voice-toggle');
+    }
   }
 
   /** Poll /health until ready, then navigate the overlay to the real chat UI */
