@@ -43,4 +43,7 @@ contextBridge.exposeInMainWorld('toji', {
 
   /** Request voice toggle from renderer */
   toggleVoice: () => ipcRenderer.send('toji:toggle-voice'),
+
+  /** Toggle the chat overlay window */
+  toggleOverlay: () => ipcRenderer.send('toji:toggle-overlay'),
 });

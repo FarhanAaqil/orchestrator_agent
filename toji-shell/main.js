@@ -110,6 +110,11 @@ ipcMain.on('toji:hide', () => {
   if (wm) wm.hide();
 });
 
+ipcMain.on('toji:toggle-overlay', () => {
+  const wm = WindowManager.getInstance();
+  if (wm) wm.toggle();
+});
+
 ipcMain.on('toji:avatar-state', (_event, state) => {
   const wm = WindowManager.getInstance();
   if (wm) wm.setAvatarState(state); // 'idle' | 'thinking' | 'speaking'

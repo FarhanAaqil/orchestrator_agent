@@ -98,6 +98,10 @@ class TrayManager {
         click: () => this._wm.show(),
       },
       {
+        label: 'Show / Hide Desktop Pet',
+        click: () => this._wm.togglePet(),
+      },
+      {
         label: 'Open Executive Dashboard',
         click: () => this._wm.createDashboard(),
       },

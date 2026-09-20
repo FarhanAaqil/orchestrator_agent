@@ -33,11 +33,12 @@ let _instance = null; // singleton reference
 
 class WindowManager {
   constructor({ dev = false } = {}) {
-    this._dev       = dev;
-    this._overlay   = null;
-    this._avatar    = null;
-    this._dashboard = null;
-    this._visible   = false;
+    this._dev            = dev;
+    this._overlay        = null;
+    this._avatar         = null;
+    this._dashboard      = null;
+    this._visible        = false;
+    this._overlayVisible = false;
     _instance = this;
   }
 
@@ -183,24 +184,27 @@ class WindowManager {
     setTimeout(attempt, 500);
   }
 
-  // ── Avatar ───────────────────────────────────────────────────────────────────
+  // ── Avatar (Desktop Pet) ─────────────────────────────────────────────────────
   createAvatar() {
-    if (!this._overlay) return;
+    const { workArea } = screen.getPrimaryDisplay();
 
-    const [ox, oy] = this._overlay.getPosition();
+    // Default desktop pet position: bottom-right corner, 24px padding from taskbar/edge
+    const ax = workArea.x + workArea.width - AW - 24;
+    const ay = workArea.y + workArea.height - AH - 24;
 
     this._avatar = new BrowserWindow({
-      width:       AW,
-      height:      AH,
-      x:           ox - AW - 10,   // to the left of the overlay
-      y:           oy,
-      frame:       false,
-      transparent: true,
-      alwaysOnTop: true,
-      skipTaskbar: true,
-      resizable:   false,
-      hasShadow:   false,
-      show:        false,
+      width:           AW,
+      height:          AH,
+      x:               ax,
+      y:               ay,
+      frame:           false,
+      transparent:     true,
+      alwaysOnTop:     true,
+      skipTaskbar:     true,
+      resizable:       false,
+      hasShadow:       false,
+      show:            true, // Visible on screen as a desktop pet!
+      backgroundColor: '#00000000',
       webPreferences: {
         preload:          path.join(__dirname, 'preload.js'),
         contextIsolation: true,
@@ -209,13 +213,20 @@ class WindowManager {
       },
     });
 
+    this._avatar.setAlwaysOnTop(true, 'screen-saver');
     this._avatar.loadFile(path.join(__dirname, 'assets', 'avatar.html'));
+
+    this._avatar.once('ready-to-show', () => {
+      this._avatar?.show();
+      this._avatar?.moveTop();
+    });
+
     this._avatar.on('closed', () => { this._avatar = null; });
   }
 
   // ── Toggle / Show / Hide ─────────────────────────────────────────────────────
   toggle() {
-    if (this._visible) {
+    if (this._overlayVisible) {
       this.hide();
     } else {
       this.show();
@@ -224,22 +235,46 @@ class WindowManager {
 
   show() {
     if (this._overlay) {
-      this._overlay.showInactive(); // don't steal focus on show
-      this._overlay.moveTop();
+      // Position overlay neatly to the left of the desktop pet
+      if (this._avatar && !this._avatar.isDestroyed()) {
+        const [ax, ay] = this._avatar.getPosition();
+        const { workArea } = screen.getPrimaryDisplay();
+        let ox = ax - OW - 16;
+        let oy = Math.min(ay, workArea.y + workArea.height - OH - 16);
+        if (ox < workArea.x) ox = ax + AW + 16;
+        this._overlay.setPosition(ox, Math.max(workArea.y + 16, oy));
+      }
+      this._overlay.show();
+      this._overlay.focus();
     }
-    if (this._avatar) {
-      this._avatar.showInactive();
+    // Pet always stays visible on screen
+    if (this._avatar && !this._avatar.isDestroyed()) {
+      this._avatar.show();
       this._avatar.moveTop();
-      // Reposition avatar relative to overlay
-      this._repositionAvatar();
     }
-    this._visible = true;
+    this._overlayVisible = true;
   }
 
   hide() {
     this._overlay?.hide();
-    this._avatar?.hide();
-    this._visible = false;
+    this._overlayVisible = false;
+    // Pet stays on desktop!
+    if (this._avatar && !this._avatar.isDestroyed()) {
+      this._avatar.show();
+    }
+  }
+
+  togglePet() {
+    if (!this._avatar || this._avatar.isDestroyed()) {
+      this.createAvatar();
+      return;
+    }
+    if (this._avatar.isVisible()) {
+      this._avatar.hide();
+    } else {
+      this._avatar.show();
+      this._avatar.moveTop();
+    }
   }
 
   // ── Avatar state ─────────────────────────────────────────────────────────────
