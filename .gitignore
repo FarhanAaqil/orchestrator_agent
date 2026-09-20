@@ -19,9 +19,10 @@ env/
 *.swo
 
 # Database files
+*.db
+*.sqlite
 *.sqlite3
-aaqil.db
-database/tracker.db
+database/*.db
 
 # SQLite write-ahead log and shared memory files
 *.db-journal
