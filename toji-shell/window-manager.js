@@ -87,11 +87,7 @@ class WindowManager {
     this._overlay.webContents.on('did-finish-load', () => {
       this._injectDragHandle();
       this._injectBorderRadius();
-
-      // First load → show windows
-      if (!this._visible) {
-        this.show();
-      }
+      this.show();
     });
 
     // Escape key hides the overlay
@@ -245,13 +241,17 @@ class WindowManager {
         this._overlay.setPosition(ox, Math.max(workArea.y + 16, oy));
       }
       this._overlay.show();
+      this._overlay.setAlwaysOnTop(true);
+      this._overlay.moveTop();
       this._overlay.focus();
     }
     // Pet always stays visible on screen
     if (this._avatar && !this._avatar.isDestroyed()) {
       this._avatar.show();
+      this._avatar.setAlwaysOnTop(true);
       this._avatar.moveTop();
     }
+    this._visible = true;
     this._overlayVisible = true;
   }
 

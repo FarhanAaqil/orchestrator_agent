@@ -23,6 +23,13 @@ const sidecar      = require('./sidecar');
 const TrayManager  = require('./tray-manager');
 const WindowManager = require('./window-manager');
 
+process.on('uncaughtException', (err) => {
+  console.error('[Toji UncaughtException]', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Toji UnhandledRejection]', reason);
+});
+
 // ── Dev flag ─────────────────────────────────────────────────────────────────
 const IS_DEV = Boolean(process.env.TOJI_DEV) || !app.isPackaged;
 
@@ -61,6 +68,7 @@ app.whenReady().then(async () => {
   const wm = new WindowManager({ dev: IS_DEV });
   wm.createOverlay();
   wm.createAvatar();
+  wm.show(); // Immediately summon to screen on start!
 
   // Create tray AFTER windows exist (Windows 11 requirement)
   const tray = new TrayManager(wm);
