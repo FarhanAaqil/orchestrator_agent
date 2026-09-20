@@ -28,6 +28,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #avatar-wrap:hover {
+      transform: scale(1.08);
+    }
+    #avatar-wrap:active {
+      transform: scale(0.95);
     }
 
     /* ── Lottie container ── */
@@ -227,6 +235,20 @@
         }
       });
     }
+
+    // ── Click to summon / toggle chat overlay ─────────────────────────────
+    let clickStartX = 0, clickStartY = 0;
+    const wrap = document.getElementById('avatar-wrap');
+    wrap.addEventListener('mousedown', (e) => {
+      clickStartX = e.screenX;
+      clickStartY = e.screenY;
+    });
+    wrap.addEventListener('mouseup', (e) => {
+      const dist = Math.hypot(e.screenX - clickStartX, e.screenY - clickStartY);
+      if (dist < 6) {
+        window.toji?.toggleOverlay();
+      }
+    });
   </script>
 </body>
 </html>

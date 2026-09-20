@@ -6,14 +6,58 @@
   "main": "main.js",
   "scripts": {
     "start": "cross-env NODE_PATH=C:\\Users\\aaqil\\toji-shell-deps\\node_modules C:\\Users\\aaqil\\toji-shell-deps\\node_modules\\.bin\\electron.cmd .",
-    "dev": "cross-env TOJI_DEV=1 NODE_PATH=C:\\Users\\aaqil\\toji-shell-deps\\node_modules C:\\Users\\aaqil\\toji-shell-deps\\node_modules\\.bin\\electron.cmd . --enable-logging"
+    "dev": "cross-env TOJI_DEV=1 NODE_PATH=C:\\Users\\aaqil\\toji-shell-deps\\node_modules C:\\Users\\aaqil\\toji-shell-deps\\node_modules\\.bin\\electron.cmd . --enable-logging",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win"
   },
-  "keywords": ["orchestrator", "toji", "desktop", "electron"],
+  "build": {
+    "appId": "com.orchestrator.toji",
+    "productName": "Toji",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "tray-manager.js",
+      "window-manager.js",
+      "sidecar.js",
+      "assets/**/*",
+      "voice/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "."
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/toji-tray.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Toji"
+    }
+  },
+  "keywords": [
+    "orchestrator",
+    "toji",
+    "desktop",
+    "electron"
+  ],
   "author": "Farhan Aaqil",
   "license": "MIT",
   "devDependencies": {
     "cross-env": "^7.0.3",
-    "electron": "^32.2.0"
+    "electron": "^32.2.0",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "electron-store": "^8.2.0"
