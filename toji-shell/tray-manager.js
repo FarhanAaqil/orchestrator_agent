@@ -106,6 +106,18 @@ class TrayManager {
         click: () => this._wm.toggleVoice(),
       },
       {
+        label: 'Launch at Startup',
+        type: 'checkbox',
+        checked: app.getLoginItemSettings().openAtLogin,
+        click: (item) => {
+          app.setLoginItemSettings({
+            openAtLogin: item.checked,
+            openAsHidden: true,
+            name: 'Toji',
+          });
+        },
+      },
+      {
         label: 'Open in Browser',
         click: () => shell.openExternal('http://127.0.0.1:8000/'),
       },

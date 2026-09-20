@@ -46,6 +46,14 @@ app.whenReady().then(async () => {
   });
   anchor.loadURL('about:blank');
 
+  // Enable openAtLogin by default in packaged distribution
+  if (!IS_DEV) {
+    const current = app.getLoginItemSettings();
+    if (!current.openAtLogin) {
+      app.setLoginItemSettings({ openAtLogin: true, openAsHidden: true, name: 'Toji' });
+    }
+  }
+
   // Start the FastAPI sidecar
   await sidecar.spawn({ dev: IS_DEV });
 
