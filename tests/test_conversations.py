@@ -87,7 +87,7 @@ def test_dispatch_persists_messages_and_context(client_with_clean_db, monkeypatc
     # 1. First dispatch with explicit conversation_id
     res1 = client_with_clean_db.post(
         "/dispatch",
-        json={"command": "Hello Jarvis, who are you?", "conversation_id": chat_id},
+        json={"command": "Hello Toji, who are you?", "conversation_id": chat_id},
     )
     assert res1.status_code == 200
     data1 = res1.json()
@@ -100,7 +100,7 @@ def test_dispatch_persists_messages_and_context(client_with_clean_db, monkeypatc
     messages = msg_res.json()
     assert len(messages) == 2
     assert messages[0]["role"] == "user"
-    assert "Hello Jarvis" in messages[0]["content"]
+    assert "Hello Toji" in messages[0]["content"]
     assert messages[1]["role"] == "assistant"
     assert messages[1]["agent"] == "general_chat_agent"
 

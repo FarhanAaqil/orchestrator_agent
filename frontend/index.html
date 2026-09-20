@@ -377,7 +377,7 @@
       );
     }
 
-    // ── VIEW 1: DISPATCH CHATBOT STUDIO (ChatGPT Style with Conversation Threads) ──
+    // ── VIEW 1: DISPATCH CHATBOT STUDIO (ChatGPT Style: Left Sidebar + Fixed-in-Place Chat Window) ──
     function DispatchView() {
       const [command, setCommand] = useState("");
       const [loading, setLoading] = useState(false);
@@ -392,7 +392,7 @@
         id: "welcome-1",
         role: "assistant",
         agent: "general_chat_agent",
-        text: "👋 **Hello! I am Jarvis, your central intelligent orchestration companion.**\n\nAll 9 autonomous agents are active and ready:\n* **🤖 Jarvis Companion**: Casual conversation, brainstorming, architecture, and system orientation.\n* **📧 Email Agent**: Check Gmail inbox, summarize correspondence, draft recruiter emails (gated sending).\n* **🐙 GitHub Agent**: Inspect repositories, review code, generate READMEs, commit messages, and issues.\n* **💼 LinkedIn Agent**: Find recruiters via web search, draft 300-char connection requests, craft posts.\n* **🎯 Career Agent**: Resume tailoring, skill-gap analysis, cover letters, and interview coaching.\n* **🔬 Research Agent**: ArXiv retrieval, methodology synthesis, and citation formatting.\n* **✍️ Growth Agent**: Tech articles for Dev.to / Hashnode, devlogs, and social threads.\n* **🔍 Critic Agent**: Objective rubric scoring, adversarial critique, and improvement proposals.\n* **ℹ️ Info Agent**: Farhan Aaqil's background, featured projects portfolio, and system architecture.\n\nAsk me anything or select a prompt below to get started!",
+        text: "👋 **Greetings. I am Toji, your autonomous companion and executive operator.**\n\nAll 9 specialized agents in the cluster are fully armed and ready:\n* **🗡️ Toji Companion**: High-level strategy, system architecture, conversational sparring, and general execution.\n* **📧 Email Agent**: Inbox inspection via IMAP, correspondence summaries, recruiter outreach drafting, and gated email delivery.\n* **🐙 GitHub Agent**: Live repository inspection, commit history analysis, README generation, PR reviews, and gated issue creation.\n* **💼 LinkedIn Agent**: Recruiter discovery, 300-char connection requests, cold DMs, and gated post publishing.\n* **🎯 Career Agent**: Resume bullets tailoring, skill-gap analysis, cover letters, and interview coaching.\n* **🔬 Research Agent**: ArXiv preprint discovery, methodology synthesis, citation formatting, and peer critiques.\n* **✍️ Growth Agent**: High-impact technical articles for Dev.to / Hashnode, devlogs, and social threads.\n* **🔍 Critic Agent**: Rigorous adversarial evaluation, multi-criteria rubric scoring, and structural critiques.\n* **ℹ️ Info Agent**: Farhan Aaqil's background, featured projects portfolio, and architecture walkthroughs.\n\nType a command or choose a prompt below to begin.",
         time: "Just now"
       };
 
@@ -469,15 +469,15 @@
       };
 
       const presets = [
-        { label: "ℹ️ Farhan Aaqil's Projects & Research", cmd: "Tell me about Farhan Aaqil's featured projects, research papers, and technical background." },
-        { label: "📧 Check Gmail Inbox & Recruiter Draft", cmd: "Check my email inbox and summarize recent correspondence." },
-        { label: "🐙 Inspect GitHub Repositories", cmd: "List repos for my profile and give a portfolio health status." },
-        { label: "💼 LinkedIn Recruiter Search & Connect", cmd: "Draft a concise 300-character LinkedIn connection note for a Senior ML Engineer." },
-        { label: "🎯 Tailor Resume for ML Engineer", cmd: "Tailor my resume bullets for a Senior Machine Learning Engineer position at Anthropic." },
+        { label: "🗡️ Talk with Toji", cmd: "Hi Toji, analyze our multi-agent architecture and tell me what needs optimization." },
+        { label: "📧 Check Email Inbox", cmd: "Check my email inbox and summarize recent correspondence." },
+        { label: "🐙 Inspect GitHub Repos", cmd: "List repos for my profile and give a portfolio health status." },
+        { label: "💼 LinkedIn Connection Note", cmd: "Draft a concise 300-character LinkedIn connection note for a Senior ML Engineer." },
+        { label: "🎯 Tailor Resume for ML", cmd: "Tailor my resume bullets for a Senior Machine Learning Engineer position at Anthropic." },
         { label: "🔬 ArXiv Research Synthesis", cmd: "Search arXiv for recent papers on LLM hallucination mitigation and summarize methodology." },
         { label: "✍️ Write Technical Devlog", cmd: "Draft a technical deep-dive on zero-parameter approval gates with SQLite CAS concurrency." },
-        { label: "🤖 Talk with Jarvis Companion", cmd: "Hi Jarvis! How is our autonomous agent cluster performing today?" },
-        { label: "⚠️ Trigger Clarification (422)", cmd: "What should I do next?" }
+        { label: "ℹ️ Farhan Aaqil's Portfolio", cmd: "Tell me about Farhan Aaqil's featured projects, research papers, and technical background." },
+        { label: "⚠️ Trigger Clarification", cmd: "What should I do next?" }
       ];
 
       // Auto-scroll chat to bottom
@@ -574,7 +574,7 @@
 
       const getAgentBadge = (id) => {
         const iconMap = {
-          general_chat_agent: "🤖",
+          general_chat_agent: "🗡️",
           email_agent: "📧",
           github_agent: "🐙",
           linkedin_agent: "💼",
@@ -589,7 +589,7 @@
 
       // Fallback agent roster if API is still loading
       const displayRoster = agentRoster.length > 0 ? agentRoster : [
-        { id: "general_chat_agent", name: "Jarvis Companion", description: "Conversational partner, architecture sounding board, and system orientation.", gated_capabilities: [] },
+        { id: "general_chat_agent", name: "Toji", description: "Farhan Aaqil's razor-sharp AI companion, executive operator, and systems architect.", gated_capabilities: [] },
         { id: "email_agent", name: "Email Agent", description: "Inbox reader, recruiter outreach drafter, and communication specialist.", gated_capabilities: ["Send email"] },
         { id: "github_agent", name: "GitHub Agent", description: "Repository inspector, commit assistant, and documentation manager.", gated_capabilities: ["Create issues"] },
         { id: "linkedin_agent", name: "LinkedIn Agent", description: "Professional networking, recruiter discovery, and 300-char connection notes.", gated_capabilities: ["Publish posts"] },
@@ -601,54 +601,158 @@
       ];
 
       return (
-        <div className="space-y-6">
-          {/* Header Banner */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-silver-500/40 pb-5">
+        <div className="space-y-4">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-silver-500/40 pb-3">
             <div>
-              <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
-                <span>⚡</span> Dispatch & Agent Chat
+              <h2 className="text-xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2">
+                <span>🗡️</span> Toji & Agent Fleet
               </h2>
-              <p className="text-sm text-silver-800 mt-1">
-                Conversational multi-agent assistant with automatic intent routing, persistent memory, and safety guardrails.
+              <p className="text-xs text-silver-800">
+                Autonomous multi-agent cluster with conversational memory and audited execution safety.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={startNewChat}
-                className="px-3.5 py-1.5 rounded-lg bg-accent-primary hover:bg-accent-hover text-white text-xs font-semibold transition-all shadow-xs flex items-center gap-1.5"
-              >
-                <span>+</span>
-                <span>New Chat</span>
-              </button>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-silver-800">Threshold:</span>
-                <span className="px-2.5 py-1 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
-                  ≥ 0.60
-                </span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-silver-800">Confidence Gate:</span>
+              <span className="px-2.5 py-0.5 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
+                ≥ 0.60
+              </span>
             </div>
           </div>
 
-          {/* Main 2-Column Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Conversational Chat Deck (8 Cols) */}
-            <div className="lg:col-span-8 flex flex-col bg-white border border-silver-400/80 rounded-2xl shadow-sm overflow-hidden min-h-[680px]">
+          {/* ChatGPT-Style Fixed Layout: Left Sidebar + Fixed-in-Place Chat Window */}
+          <div className="flex flex-col md:flex-row gap-5 h-[calc(100vh-250px)] min-h-[580px] max-h-[820px]">
+            
+            {/* ── LEFT SIDEBAR (Saved Chat Threads + Fleet Roster) ── */}
+            <aside className="w-full md:w-80 flex-shrink-0 flex flex-col bg-white border border-silver-400/80 rounded-2xl p-4 shadow-sm h-full overflow-hidden">
               
-              {/* Chat Thread Sub-header */}
-              <div className="px-6 py-3 border-b border-silver-200 bg-silver-50/50 flex items-center justify-between text-xs font-mono">
-                <div className="flex items-center gap-2 text-silver-700 truncate">
+              {/* Top: New Chat Action */}
+              <button
+                onClick={startNewChat}
+                className="w-full mb-3 px-4 py-2.5 rounded-xl bg-silver-900 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all flex-shrink-0"
+              >
+                <span className="text-base font-bold">+</span>
+                <span>New Chat</span>
+              </button>
+
+              {/* Middle Top: Saved Chat Threads */}
+              <div className="flex flex-col min-h-0 flex-1 border-b border-silver-200 pb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-silver-600 flex items-center gap-1.5">
+                    <span>💬</span>
+                    <span>Saved Threads ({conversations.length})</span>
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                  {conversations.length === 0 ? (
+                    <p className="text-xs text-silver-500 italic py-3 text-center">No saved chats yet.</p>
+                  ) : (
+                    conversations.map(c => {
+                      const isActive = conversationId === c.id;
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => selectConversation(c.id)}
+                          className={`group w-full text-left p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                            isActive
+                              ? 'bg-accent-light/50 border-accent-primary text-accent-hover font-bold shadow-xs'
+                              : 'bg-silver-50 hover:bg-silver-100 border-silver-200 text-silver-800'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs truncate font-medium">
+                              {c.title}
+                            </p>
+                            <span className="text-[10px] font-mono text-silver-500 block">
+                              {c.message_count} msgs • {new Date(c.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={e => handleDeleteConversation(c.id, e)}
+                            title="Delete thread"
+                            className="opacity-0 group-hover:opacity-100 text-silver-400 hover:text-red-600 px-1.5 py-0.5 rounded transition-all text-xs font-mono"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Middle Bottom: Fleet Roster (9) */}
+              <div className="flex flex-col min-h-0 flex-1 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-silver-600 flex items-center gap-1.5">
+                    <span>⚔️</span>
+                    <span>Fleet Roster ({displayRoster.length})</span>
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                  {displayRoster.map(a => {
+                    const hasGated = a.gated_capabilities && a.gated_capabilities.length > 0;
+                    return (
+                      <div
+                        key={a.id}
+                        className="p-2 rounded-xl bg-silver-50 border border-silver-200 hover:border-silver-300 transition-all space-y-0.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-silver-900 flex items-center gap-1.5">
+                            <span>{getAgentBadge(a.id)}</span>
+                            <span>{a.id === 'general_chat_agent' ? 'Toji' : a.name}</span>
+                          </span>
+                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                            hasGated
+                              ? 'bg-amber-50 text-amber-800 border-amber-300'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {hasGated ? 'GATED' : 'READY'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-silver-600 truncate leading-tight">{a.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sidebar Footer */}
+              <div className="pt-3 border-t border-silver-200 text-center">
+                <span className="text-[10px] font-mono text-silver-500">
+                  ⚡ Cluster Online • 9 Agents
+                </span>
+              </div>
+            </aside>
+
+            {/* ── RIGHT MAIN AREA: FIXED-IN-PLACE CHATBOT WINDOW ── */}
+            <section className="flex-1 flex flex-col bg-white border border-silver-400/80 rounded-2xl shadow-sm h-full overflow-hidden relative">
+              
+              {/* Top Sub-header (Chatbot Title Bar) */}
+              <div className="px-6 py-3 border-b border-silver-200 bg-silver-50/70 flex items-center justify-between text-xs font-mono flex-shrink-0">
+                <div className="flex items-center gap-2 truncate text-silver-700">
                   <span className="text-accent-primary font-bold">Thread:</span>
                   <span className="truncate max-w-md font-semibold text-silver-900">
                     {conversationId ? (conversations.find(c => c.id === conversationId)?.title || "Active Chat") : "New Chat Session"}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[11px] text-silver-500 flex-shrink-0">
+                <div className="flex items-center gap-3 text-[11px] text-silver-500 flex-shrink-0">
                   <span>{messages.length} messages</span>
+                  <button
+                    onClick={startNewChat}
+                    className="text-accent-primary hover:underline font-bold"
+                  >
+                    Clear View
+                  </button>
                 </div>
               </div>
 
-              {/* Chat Messages Stream — STRICT SCROLL CONTAINMENT (max-h-[560px] h-[560px] overflow-y-auto) */}
-              <div className="flex-1 p-6 overflow-y-auto space-y-6 max-h-[560px] h-[560px] scroll-smooth">
+              {/* Center: Message Stream (Scrollable within fixed chatbot container) */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-5 scroll-smooth min-h-0">
                 {messages.map(m => {
                   if (m.role === 'user') {
                     return (
@@ -657,7 +761,7 @@
                           <span>{m.time}</span>
                           <span className="font-bold text-silver-800">You</span>
                         </div>
-                        <div className="max-w-2xl bg-silver-900 text-white px-5 py-3.5 rounded-2xl rounded-tr-xs text-sm leading-relaxed shadow-sm font-sans whitespace-pre-wrap">
+                        <div className="max-w-2xl bg-silver-900 text-white px-5 py-3 rounded-2xl rounded-tr-xs text-sm leading-relaxed shadow-sm font-sans whitespace-pre-wrap">
                           {m.text}
                         </div>
                       </div>
@@ -667,7 +771,7 @@
                   if (m.role === 'clarification') {
                     return (
                       <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
-                        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 shadow-sm space-y-3 w-full">
+                        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 shadow-sm space-y-2.5 w-full">
                           <div className="flex items-center justify-between text-amber-900 font-bold text-sm">
                             <span className="flex items-center gap-2">
                               <span>⚠️</span>
@@ -683,7 +787,7 @@
                               <button
                                 key={agent}
                                 onClick={() => handleExecute(`[For ${agent}] ${m.originalCommand}`)}
-                                className="px-3.5 py-2 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
+                                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
                               >
                                 <span>🎯 Route to:</span>
                                 <span className="underline">{agent}</span>
@@ -698,9 +802,9 @@
                   if (m.role === 'error') {
                     return (
                       <div key={m.id} className="flex flex-col items-start space-y-1 max-w-2xl">
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm w-full">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm w-full">
                           <span className="text-base text-red-600">⚠️</span>
-                          <div className="flex-1 space-y-1">
+                          <div className="flex-1 space-y-0.5">
                             <span className="font-bold text-red-700 uppercase tracking-wider block">Execution Notice</span>
                             <p className="text-red-800">{m.text}</p>
                           </div>
@@ -712,19 +816,20 @@
 
                   // Default: Assistant Message
                   const isRaw = viewModes[m.id] === 'raw';
+                  const displayAgentName = m.agent === 'general_chat_agent' ? 'Toji' : (m.agent || 'Assistant');
 
                   return (
                     <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
                       {/* Assistant Header Capsule */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 w-full border-b border-silver-200 pb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-3 w-full border-b border-silver-200 pb-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs">
+                          <span className="w-5 h-5 rounded-md bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs">
                             ✓
                           </span>
                           <span className="text-xs font-mono font-bold text-silver-600 uppercase">Agent:</span>
                           <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded bg-silver-900 text-white shadow-xs flex items-center gap-1.5">
                             <span>{getAgentBadge(m.agent)}</span>
-                            <span>{m.agent}</span>
+                            <span>{displayAgentName}</span>
                           </span>
                         </div>
 
@@ -766,7 +871,7 @@
                       </div>
 
                       {/* Content Body */}
-                      <div className="w-full bg-silver-50/70 border border-silver-200 rounded-2xl p-5 shadow-xs transition-all">
+                      <div className="w-full bg-silver-50/70 border border-silver-200 rounded-2xl p-4 shadow-xs transition-all">
                         {isRaw ? (
                           <pre className="bg-slate-900 rounded-xl p-4 text-xs font-mono text-slate-100 whitespace-pre-wrap overflow-x-auto">
                             {m.text}
@@ -787,13 +892,12 @@
                   <div className="flex flex-col items-start space-y-3 max-w-2xl w-full">
                     <div className="flex items-center gap-2">
                       <span className="w-4 h-4 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" />
-                      <span className="text-xs font-mono font-bold text-silver-700 animate-pulse">Agent is thinking & composing response...</span>
+                      <span className="text-xs font-mono font-bold text-silver-700 animate-pulse">Toji is executing & orchestrating response...</span>
                     </div>
-                    <div className="w-full bg-silver-50/80 border border-silver-200 rounded-2xl p-5 space-y-3 animate-pulse shadow-xs">
+                    <div className="w-full bg-silver-50/80 border border-silver-200 rounded-2xl p-4 space-y-2.5 animate-pulse shadow-xs">
                       <div className="h-4 bg-silver-300 rounded-md w-3/4"></div>
                       <div className="h-3.5 bg-silver-200 rounded-md w-11/12"></div>
                       <div className="h-3.5 bg-silver-200 rounded-md w-4/5"></div>
-                      <div className="h-3 bg-silver-100 rounded-md w-2/3"></div>
                     </div>
                   </div>
                 )}
@@ -801,17 +905,17 @@
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Bottom Conversational Dock */}
-              <div className="border-t border-silver-300 bg-white p-4 space-y-3">
+              {/* Bottom Fixed Input Dock */}
+              <div className="border-t border-silver-300 bg-white p-3.5 space-y-2.5 flex-shrink-0">
                 {/* Quick-Prompt Suggestions Carousel */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
-                  <span className="text-[11px] font-mono text-silver-500 flex-shrink-0">Suggestions:</span>
+                  <span className="text-[11px] font-mono text-silver-500 flex-shrink-0">Prompts:</span>
                   {presets.slice(0, 5).map((p, i) => (
                     <button
                       key={i}
                       onClick={() => handleExecute(p.cmd)}
                       disabled={loading}
-                      className="flex-shrink-0 px-2.5 py-1 rounded-full bg-silver-100 hover:bg-silver-200 border border-silver-300 text-silver-700 hover:text-silver-900 transition-all font-medium disabled:opacity-50"
+                      className="flex-shrink-0 px-2.5 py-1 rounded-full bg-silver-100 hover:bg-silver-200 border border-silver-300 text-silver-700 hover:text-silver-900 transition-all font-medium disabled:opacity-50 text-[11px]"
                     >
                       {p.label}
                     </button>
@@ -829,9 +933,9 @@
                         handleExecute();
                       }
                     }}
-                    placeholder="Type a message or command... (Press ↵ Enter to send, Shift+Enter for new line)"
+                    placeholder="Message Toji or command an agent... (Press ↵ Enter to send, Shift+Enter for new line)"
                     rows={2}
-                    className="flex-1 bg-transparent px-3 py-1.5 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none resize-none font-sans"
+                    className="flex-1 bg-transparent px-3 py-1 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none resize-none font-sans"
                   />
 
                   <div className="flex items-center gap-2 pr-2">
@@ -860,102 +964,11 @@
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] font-mono text-silver-500 px-1">
-                  <span>Chatbot Powered by Multi-Agent Router & Persistent Context</span>
+                  <span>Chatbot Powered by Toji & Multi-Agent Router</span>
                   <span>Input auto-clears on send</span>
                 </div>
               </div>
-            </div>
-
-            {/* Right Inspector Rail (4 Cols) */}
-            <div className="lg:col-span-4 space-y-5">
-              {/* Session Activity / Conversations Card */}
-              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-silver-900 flex items-center gap-2">
-                    <span>💬</span>
-                    <span>Saved Chat Threads</span>
-                  </h3>
-                  <button
-                    onClick={startNewChat}
-                    className="text-[11px] font-mono text-accent-primary font-bold hover:underline"
-                  >
-                    + New
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                  {conversations.length === 0 ? (
-                    <p className="text-xs text-silver-500 italic py-2">No saved chats yet. Start chatting below!</p>
-                  ) : (
-                    conversations.map(c => {
-                      const isActive = conversationId === c.id;
-                      return (
-                        <div
-                          key={c.id}
-                          onClick={() => selectConversation(c.id)}
-                          className={`group w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                            isActive
-                              ? 'bg-accent-light/40 border-accent-primary/80 shadow-xs'
-                              : 'bg-silver-50 hover:bg-silver-100 border-silver-200'
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-xs truncate font-medium ${isActive ? 'text-accent-hover font-bold' : 'text-silver-900'}`}>
-                              {c.title}
-                            </p>
-                            <span className="text-[10px] font-mono text-silver-500">
-                              {c.message_count} msgs • {new Date(c.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                            </span>
-                          </div>
-
-                          <button
-                            onClick={e => handleDeleteConversation(c.id, e)}
-                            title="Delete thread"
-                            className="opacity-0 group-hover:opacity-100 text-silver-400 hover:text-red-600 px-1.5 py-0.5 rounded transition-all text-xs font-mono"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* Supported Agent Roster Card — All 9 Agents */}
-              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-accent-primary flex items-center gap-2">
-                    <span>Fleet Roster ({displayRoster.length})</span>
-                  </h3>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                </div>
-
-                <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                  {displayRoster.map(a => {
-                    const hasGated = a.gated_capabilities && a.gated_capabilities.length > 0;
-                    return (
-                      <div key={a.id} className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1 hover:border-silver-300 transition-all">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-silver-900 flex items-center gap-2">
-                            <span>{getAgentBadge(a.id)}</span>
-                            <span>{a.name}</span>
-                          </span>
-                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-                            hasGated
-                              ? 'bg-amber-50 text-amber-800 border-amber-300'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          }`}>
-                            {hasGated ? 'GATED' : 'FREE'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-silver-700 leading-tight">{a.description}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            </section>
           </div>
         </div>
       );

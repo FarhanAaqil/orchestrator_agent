@@ -50,7 +50,7 @@ SUPPORTED_AGENTS = {
     "email_agent": "Checking email inbox, reading unread messages, drafting recruiter outreach, and sending emails.",
     "github_agent": "GitHub repositories, user profiles, commit history, README generation, commit messages, creating issues or PR comments.",
     "linkedin_agent": "LinkedIn networking, recruiter discovery, 300-character connection notes, cold DMs, headline/profile optimization, and LinkedIn posts.",
-    "general_chat_agent": "Casual conversation, general brainstorming, high-level technical advice, chitchat, greetings, and Jarvis assistant companion.",
+    "general_chat_agent": "Casual conversation, general brainstorming, high-level technical advice, chitchat, greetings, and Toji companion.",
 }
 
 _ROUTER_SYSTEM_PROMPT = """\
@@ -158,7 +158,7 @@ def _heuristic_classify(command: str) -> dict:
         }
 
     # General chat / greetings keywords
-    if any(k in lower for k in ("hi", "hello", "hey", "who are you", "what can you do", "jarvis", "help me", "how are you", "good morning", "good evening", "chat")):
+    if any(k in lower for k in ("hi", "hello", "hey", "who are you", "what can you do", "toji", "jarvis", "help me", "how are you", "good morning", "good evening", "chat")):
         return {
             "agent": "general_chat_agent",
             "confidence": 0.95,

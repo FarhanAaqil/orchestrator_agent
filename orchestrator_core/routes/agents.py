@@ -25,8 +25,8 @@ class AgentInfo(BaseModel):
 AGENTS_REGISTRY: list[AgentInfo] = [
     AgentInfo(
         id="general_chat_agent",
-        name="Jarvis Companion",
-        description="Conversational partner, technical sounding board, and high-level assistant.",
+        name="Toji",
+        description="Farhan Aaqil's razor-sharp AI companion, executive operator, and systems architect.",
         icon="message-square",
         free_capabilities=["Casual discussion", "Architecture brainstorm", "Fleet orientation", "Technical explanations"],
         gated_capabilities=[],

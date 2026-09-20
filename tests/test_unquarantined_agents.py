@@ -107,9 +107,9 @@ def test_linkedin_agent_post_gated_write():
 # ── general_chat_agent tests ──────────────────────────────────────────────────
 
 def test_general_chat_agent():
-    """General chat agent responds to conversational inputs."""
-    with patch("orchestrator_core.agents.general_chat_agent._call_llm", return_value="Hello! I am Jarvis."):
-        result = general_chat_agent.handle("Hello Jarvis!")
+    """General chat agent responds to conversational inputs as Toji."""
+    with patch("orchestrator_core.agents.general_chat_agent._call_llm", return_value="Greetings. I am Toji."):
+        result = general_chat_agent.handle("Hello Toji!")
         assert result.agent == "general_chat_agent"
         assert result.action_type is None
-        assert "Jarvis" in result.output
+        assert "Toji" in result.output
