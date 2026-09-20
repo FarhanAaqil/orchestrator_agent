@@ -64,14 +64,18 @@ Your mission is to provide clear, helpful, and technically accurate explanations
      Callers cannot alter or substitute payloads at execution time (zero-parameter contract).
    - Circuit Breakers: Protects against external LLM outages with 3-failure threshold and 30s cooldown.
    - Multi-Step Pipelines: Automated workflows (apply, publish, research) audited with per-stage latency logs.
-3. The Available Agents:
-   - career_agent: Resumes, cover letters, career planning, interview prep.
-   - research_agent: ArXiv literature retrieval, synthesis, journal checking, IEEE formatting.
-   - growth_content_agent: Technical blogs for Dev.to/Hashnode, social threads, devlogs.
-   - critic_agent: Objective rubric scoring, editorial critique, and improvement feedback.
-   - info_agent: System documentation, project details, architecture explanation, and general talk.
+3. The Fleet of 9 Autonomous Specialized Agents:
+   - general_chat_agent (Toji): Farhan Aaqil's central intelligent orchestration companion, razor-sharp operator, and executive systems architect.
+   - email_agent: Inbox inspection, reading unread messages, recruiter outreach drafting, and human-gated email dispatch.
+   - github_agent: GitHub repository inspection, commit history, README/commit drafting, and human-gated issue/comment creation.
+   - linkedin_agent: LinkedIn networking, recruiter discovery, 300-char connection notes, cold DMs, profile optimization, and human-gated post publishing.
+   - career_agent: Resumes, cover letters, career planning, skill-gap analysis, and technical interview prep.
+   - research_agent: ArXiv literature retrieval, synthesis, state-of-the-art tracking, journal checking, and IEEE formatting.
+   - growth_content_agent: Technical blog posts for Dev.to/Hashnode/Medium, social threads, devlogs, and human-gated publishing.
+   - critic_agent: Objective rubric scoring, adversarial code review, editorial critique, and improvement feedback.
+   - info_agent: System documentation, Farhan Aaqil's portfolio, system architecture explanations, and cluster telemetry.
 4. General Conversational Queries ("Common Talk"):
-   - Greet politely, answer general questions, explain how to use the system, and guide the user on which agent to run for their goals.
+   - Greet politely, answer general questions, explain how to use the system, and guide the user on which of the 9 agents to run for their goals.
 
 Maintain an approachable, technical, and concise tone. Format responses with clean markdown."""
 
@@ -96,6 +100,16 @@ def _call_llm(prompt: str) -> str:
         return (
             "### Orchestrator Information & Architecture\n\n"
             "**Developer**: Farhan Aaqil (B.Tech AI/ML, JPNCE Mahbubnagar 2027)\n\n"
+            "**Fleet of 9 Agents**:\n"
+            "- **Toji (general_chat_agent)**: Central companion, executive operator, and systems architect.\n"
+            "- **Email Agent**: Inbox inspection, recruiter outreach drafting, and gated email sending.\n"
+            "- **GitHub Agent**: Repo inspection, README/commit drafting, and gated issue creation.\n"
+            "- **LinkedIn Agent**: Recruiter search, 300-char connection notes, and gated post publishing.\n"
+            "- **Career Agent**: Resume tailoring, skill-gap analysis, and cover letters.\n"
+            "- **Research Agent**: ArXiv paper retrieval, synthesis, and journal evaluation.\n"
+            "- **Growth Agent**: Technical blog posts and devlogs with gated publishing.\n"
+            "- **Critic Agent**: Objective rubric scoring and adversarial quality critiques.\n"
+            "- **Info Agent**: Portfolio insights, system documentation, and architecture explanation.\n\n"
             "**Key Projects**:\n"
             "- **Orchestrator Agent**: Multi-agent control plane with unbypassable approval gate, CAS concurrency, and fail-fast circuit breaker.\n"
             "- **DiaPredict AI**: Machine learning diabetes prediction (*Published Research 2025*).\n"
@@ -103,7 +117,7 @@ def _call_llm(prompt: str) -> str:
             "- **SheetSense AI**: Conversational spreadsheet intelligence platform.\n"
             "- **IntelliGlove & InterviewPro**: IoT gesture recognition and technical interview simulators.\n\n"
             "**How to Use the Orchestrator**:\n"
-            "- Use **Dispatch Studio** for direct commands (Career, Research, Growth, Critic, Info).\n"
+            "- Use **Dispatch Studio** for direct commands and conversational collaboration with Toji and the 9-agent fleet.\n"
             "- Use **Pipelines** for end-to-end multi-step automated workflows.\n"
             "- Use **Approvals Gate** to review and authorize sensitive actions with atomic zero-parameter safety."
         )

@@ -244,11 +244,13 @@
 
     // ── API Service ──
     const api = {
-      dispatch: async (command) => {
+      dispatch: async (command, conversationId = null) => {
+        const payload = { command, context: {} };
+        if (conversationId) payload.conversation_id = conversationId;
         const res = await fetch('/dispatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command, context: {} })
+          body: JSON.stringify(payload)
         });
         if (res.status === 422) {
           const err = await res.json();
@@ -263,6 +265,35 @@
           try { const j = await res.json(); errText = j.detail || errText; } catch {}
           throw new Error(`HTTP ${res.status}: ${errText}`);
         }
+        return res.json();
+      },
+      getAgents: async () => {
+        const res = await fetch('/agents');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      getConversations: async () => {
+        const res = await fetch('/conversations');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      createConversation: async (title) => {
+        const res = await fetch('/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      getConversationMessages: async (id) => {
+        const res = await fetch(`/conversations/${id}/messages`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      },
+      deleteConversation: async (id) => {
+        const res = await fetch(`/conversations/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       },
       startPipeline: async (name, command) => {
@@ -346,38 +377,108 @@
       );
     }
 
-    // ── VIEW 1: DISPATCH CHATBOT STUDIO (ChatGPT Style) ──
+    // ── VIEW 1: DISPATCH CHATBOT STUDIO (ChatGPT Style: Left Sidebar + Fixed-in-Place Chat Window) ──
     function DispatchView() {
       const [command, setCommand] = useState("");
       const [loading, setLoading] = useState(false);
       const [viewModes, setViewModes] = useState({}); // { [msgId]: 'formatted' | 'raw' }
       const [copiedId, setCopiedId] = useState(null);
+      const [conversationId, setConversationId] = useState(null);
+      const [conversations, setConversations] = useState([]);
+      const [agentRoster, setAgentRoster] = useState([]);
       const messagesEndRef = useRef(null);
 
-      const [messages, setMessages] = useState([
-        {
-          id: "welcome-1",
-          role: "assistant",
-          agent: "info_agent",
-          text: "👋 **Hello! Welcome to the Orchestrator Multi-Agent Chat.**\n\nI am connected to the autonomous agent cluster:\n* **ℹ️ Info Agent**: Farhan Aaqil's background, projects portfolio, research, and how this system works.\n* **💼 Career Agent**: Resume tailoring, cover letters, and interview preparation.\n* **🔬 Research Agent**: ArXiv retrieval, methodology synthesis, and IEEE checks.\n* **✍️ Growth Agent**: Tech articles for Dev.to / Hashnode and social devlogs.\n* **🔍 Critic Agent**: Objective rubric critique and scoring.\n\nAsk me anything or choose a quick prompt below to begin!",
-          time: "Just now"
-        }
-      ]);
+      const defaultWelcome = {
+        id: "welcome-1",
+        role: "assistant",
+        agent: "general_chat_agent",
+        text: "👋 **Greetings. I am Toji, your autonomous companion and executive operator.**\n\nAll 9 specialized agents in the cluster are fully armed and ready:\n* **🗡️ Toji Companion**: High-level strategy, system architecture, conversational sparring, and general execution.\n* **📧 Email Agent**: Inbox inspection via IMAP, correspondence summaries, recruiter outreach drafting, and gated email delivery.\n* **🐙 GitHub Agent**: Live repository inspection, commit history analysis, README generation, PR reviews, and gated issue creation.\n* **💼 LinkedIn Agent**: Recruiter discovery, 300-char connection requests, cold DMs, and gated post publishing.\n* **🎯 Career Agent**: Resume bullets tailoring, skill-gap analysis, cover letters, and interview coaching.\n* **🔬 Research Agent**: ArXiv preprint discovery, methodology synthesis, citation formatting, and peer critiques.\n* **✍️ Growth Agent**: High-impact technical articles for Dev.to / Hashnode, devlogs, and social threads.\n* **🔍 Critic Agent**: Rigorous adversarial evaluation, multi-criteria rubric scoring, and structural critiques.\n* **ℹ️ Info Agent**: Farhan Aaqil's background, featured projects portfolio, and architecture walkthroughs.\n\nType a command or choose a prompt below to begin.",
+        time: "Just now"
+      };
 
-      const [history, setHistory] = useState([
-        { cmd: "Tell me about Farhan Aaqil's featured projects and research", agent: "info_agent", time: "Just now" },
-        { cmd: "Tailor my resume for Machine Learning Engineer", agent: "career_agent", time: "Just now" },
-        { cmd: "Search arXiv papers on multi-agent consensus", agent: "research_agent", time: "5m ago" }
-      ]);
+      const [messages, setMessages] = useState([defaultWelcome]);
+
+      const loadAgents = async () => {
+        try {
+          const agents = await api.getAgents();
+          if (Array.isArray(agents) && agents.length > 0) {
+            setAgentRoster(agents);
+          }
+        } catch (err) {
+          console.warn("Could not load agent roster:", err);
+        }
+      };
+
+      const loadConversations = async () => {
+        try {
+          const convs = await api.getConversations();
+          if (Array.isArray(convs)) {
+            setConversations(convs);
+          }
+        } catch (err) {
+          console.warn("Could not load conversations:", err);
+        }
+      };
+
+      useEffect(() => {
+        loadAgents();
+        loadConversations();
+      }, []);
+
+      const selectConversation = async (cid) => {
+        if (loading) return;
+        setConversationId(cid);
+        setLoading(true);
+        try {
+          const msgs = await api.getConversationMessages(cid);
+          if (Array.isArray(msgs) && msgs.length > 0) {
+            setMessages(msgs.map(m => ({
+              id: m.id,
+              role: m.role,
+              agent: m.agent || "user",
+              text: m.content,
+              time: m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Saved'
+            })));
+          } else {
+            setMessages([defaultWelcome]);
+          }
+        } catch (err) {
+          console.error("Failed to load conversation messages:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const startNewChat = () => {
+        setConversationId(null);
+        setMessages([defaultWelcome]);
+      };
+
+      const handleDeleteConversation = async (cid, e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (!cid) return;
+        if (!confirm("Are you sure you want to delete this conversation thread?")) return;
+        try {
+          await api.deleteConversation(cid);
+          setConversations(prev => prev.filter(c => c.id !== cid));
+          if (conversationId === cid) {
+            startNewChat();
+          }
+        } catch (err) {
+          alert("Could not delete conversation: " + err.message);
+        }
+      };
 
       const presets = [
-        { label: "ℹ️ Farhan Aaqil's Projects & Research", cmd: "Tell me about Farhan Aaqil's featured projects, research papers, and technical background." },
-        { label: "⚙️ How Orchestrator System Works", cmd: "Explain how the Orchestrator Agent works, its architecture, safety gates, and agents." },
-        { label: "💬 Common Talk / General Help", cmd: "Hi! Who are you and how can you help me today?" },
-        { label: "💼 Tailor Resume for ML Engineer", cmd: "Tailor my resume bullets for a Senior Machine Learning Engineer position at Anthropic." },
+        { label: "🗡️ Talk with Toji", cmd: "Hi Toji, analyze our multi-agent architecture and tell me what needs optimization." },
+        { label: "📧 Check Email Inbox", cmd: "Check my email inbox and summarize recent correspondence." },
+        { label: "🐙 Inspect GitHub Repos", cmd: "List repos for my profile and give a portfolio health status." },
+        { label: "💼 LinkedIn Connection Note", cmd: "Draft a concise 300-character LinkedIn connection note for a Senior ML Engineer." },
+        { label: "🎯 Tailor Resume for ML", cmd: "Tailor my resume bullets for a Senior Machine Learning Engineer position at Anthropic." },
         { label: "🔬 ArXiv Research Synthesis", cmd: "Search arXiv for recent papers on LLM hallucination mitigation and summarize methodology." },
         { label: "✍️ Write Technical Devlog", cmd: "Draft a technical deep-dive on zero-parameter approval gates with SQLite CAS concurrency." },
-        { label: "⚠️ Trigger Clarification (422)", cmd: "What should I do next?" }
+        { label: "ℹ️ Farhan Aaqil's Portfolio", cmd: "Tell me about Farhan Aaqil's featured projects, research papers, and technical background." },
+        { label: "⚠️ Trigger Clarification", cmd: "What should I do next?" }
       ];
 
       // Auto-scroll chat to bottom
@@ -389,7 +490,6 @@
         const cmdToRun = (cmdOverride || command).trim();
         if (!cmdToRun || loading) return;
 
-        // Immediately empty the input box!
         setCommand("");
         setLoading(true);
 
@@ -403,7 +503,7 @@
         ]);
 
         try {
-          const data = await api.dispatch(cmdToRun);
+          const data = await api.dispatch(cmdToRun, conversationId);
           const assistantMsgId = Date.now() + 1;
 
           setMessages(prev => [
@@ -416,7 +516,11 @@
               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
           ]);
-          setHistory(prev => [{ cmd: cmdToRun, agent: data.agent, time: "Just now" }, ...prev.slice(0, 5)]);
+
+          if (data.metadata && data.metadata.conversation_id) {
+            setConversationId(data.metadata.conversation_id);
+          }
+          loadConversations();
         } catch (err) {
           if (err.isClarification) {
             setMessages(prev => [
@@ -469,54 +573,200 @@
         }));
       };
 
-      const clearChat = () => {
-        setMessages([
-          {
-            id: "fresh-1",
-            role: "assistant",
-            agent: "info_agent",
-            text: "💬 **New Chat Session Started.** How can I assist you with agents, projects, or workflows today?",
-            time: "Just now"
-          }
-        ]);
+      const getAgentBadge = (id) => {
+        const iconMap = {
+          general_chat_agent: "🗡️",
+          email_agent: "📧",
+          github_agent: "🐙",
+          linkedin_agent: "💼",
+          career_agent: "🎯",
+          research_agent: "🔬",
+          growth_content_agent: "✍️",
+          critic_agent: "🔍",
+          info_agent: "ℹ️"
+        };
+        return iconMap[id] || "⚡";
       };
 
+      // Fallback agent roster if API is still loading
+      const displayRoster = agentRoster.length > 0 ? agentRoster : [
+        { id: "general_chat_agent", name: "Toji", description: "Farhan Aaqil's razor-sharp AI companion, executive operator, and systems architect.", gated_capabilities: [] },
+        { id: "email_agent", name: "Email Agent", description: "Inbox reader, recruiter outreach drafter, and communication specialist.", gated_capabilities: ["Send email"] },
+        { id: "github_agent", name: "GitHub Agent", description: "Repository inspector, commit assistant, and documentation manager.", gated_capabilities: ["Create issues"] },
+        { id: "linkedin_agent", name: "LinkedIn Agent", description: "Professional networking, recruiter discovery, and 300-char connection notes.", gated_capabilities: ["Publish posts"] },
+        { id: "career_agent", name: "Career Agent", description: "Resume tailoring, skill-gap analysis, cover letters.", gated_capabilities: [] },
+        { id: "research_agent", name: "Research Agent", description: "ArXiv literature retrieval, synthesis, peer reviews.", gated_capabilities: [] },
+        { id: "growth_content_agent", name: "Growth Agent", description: "Tech articles, Dev.to/Hashnode drafts, social threads.", gated_capabilities: ["Publish articles"] },
+        { id: "critic_agent", name: "Critic Agent", description: "Objective scoring, rubric reviews, gap critiques.", gated_capabilities: [] },
+        { id: "info_agent", name: "Info Agent", description: "Farhan Aaqil's projects portfolio, system architecture, and documentation.", gated_capabilities: [] },
+      ];
+
       return (
-        <div className="space-y-6">
-          {/* Header Banner */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-silver-500/40 pb-5">
+        <div className="flex-1 min-h-0 flex flex-col h-full space-y-3">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-silver-500/40 pb-2 flex-shrink-0">
             <div>
-              <h2 className="text-2xl font-extrabold text-silver-900 tracking-tight flex items-center gap-2.5">
-                <span>⚡</span> Dispatch & Agent Chat
+              <h2 className="text-lg font-extrabold text-silver-900 tracking-tight flex items-center gap-2">
+                <span>🗡️</span> Toji & Agent Fleet
               </h2>
-              <p className="text-sm text-silver-800 mt-1">
-                Conversational multi-agent assistant with automatic intent routing and safety guardrails.
+              <p className="text-xs text-silver-800">
+                Autonomous multi-agent cluster with conversational memory and audited execution safety.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={clearChat}
-                className="px-3 py-1.5 rounded-lg bg-white hover:bg-silver-100 border border-silver-300 text-xs font-mono text-silver-700 hover:text-silver-900 transition-all shadow-xs flex items-center gap-1.5"
-              >
-                <span>🗑️</span>
-                <span>New Chat</span>
-              </button>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-silver-800">Threshold:</span>
-                <span className="px-2.5 py-1 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
-                  ≥ 0.60
-                </span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-silver-800">Confidence Gate:</span>
+              <span className="px-2.5 py-0.5 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
+                ≥ 0.60
+              </span>
             </div>
           </div>
 
-          {/* Main 2-Column Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Conversational Chat Deck (8 Cols) */}
-            <div className="lg:col-span-8 flex flex-col bg-white border border-silver-400/80 rounded-2xl shadow-sm overflow-hidden min-h-[680px]">
+          {/* ChatGPT-Style Fixed Layout: Left Sidebar + Fixed-in-Place Chat Window */}
+          <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 h-full overflow-hidden">
+            
+            {/* ── LEFT SIDEBAR (Saved Chat Threads + Fleet Roster) ── */}
+            <aside className="w-full md:w-80 flex-shrink-0 flex flex-col bg-white border border-silver-400/80 rounded-2xl p-3.5 shadow-sm h-full overflow-hidden">
               
-              {/* Chat Messages Stream */}
-              <div className="flex-1 p-6 overflow-y-auto space-y-6 max-h-[580px]">
+              {/* Top: New Chat Action */}
+              <button
+                onClick={startNewChat}
+                className="w-full mb-3 px-4 py-2 rounded-xl bg-silver-900 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all flex-shrink-0"
+              >
+                <span className="text-base font-bold">+</span>
+                <span>New Chat</span>
+              </button>
+
+              {/* Middle Top: Saved Chat Threads */}
+              <div className="flex flex-col min-h-0 flex-1 border-b border-silver-200 pb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-silver-600 flex items-center gap-1.5">
+                    <span>💬</span>
+                    <span>Saved Threads ({conversations.length})</span>
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                  {conversations.length === 0 ? (
+                    <p className="text-xs text-silver-500 italic py-3 text-center">No saved chats yet.</p>
+                  ) : (
+                    conversations.map(c => {
+                      const isActive = conversationId === c.id;
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => selectConversation(c.id)}
+                          className={`group w-full text-left p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                            isActive
+                              ? 'bg-accent-light/50 border-accent-primary text-accent-hover font-bold shadow-xs'
+                              : 'bg-silver-50 hover:bg-silver-100 border-silver-200 text-silver-800'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs truncate font-medium">
+                              {c.title}
+                            </p>
+                            <span className="text-[10px] font-mono text-silver-500 block">
+                              {c.message_count} msgs • {new Date(c.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={e => handleDeleteConversation(c.id, e)}
+                            title="Delete thread"
+                            className="text-silver-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Middle Bottom: Fleet Roster (9) */}
+              <div className="flex flex-col min-h-0 flex-1 pt-2.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-silver-600 flex items-center gap-1.5">
+                    <span>⚔️</span>
+                    <span>Fleet Roster ({displayRoster.length})</span>
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                  {displayRoster.map(a => {
+                    const hasGated = a.gated_capabilities && a.gated_capabilities.length > 0;
+                    return (
+                      <div
+                        key={a.id}
+                        className="p-2 rounded-xl bg-silver-50 border border-silver-200 hover:border-silver-300 transition-all space-y-0.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-silver-900 flex items-center gap-1.5">
+                            <span>{getAgentBadge(a.id)}</span>
+                            <span>{a.id === 'general_chat_agent' ? 'Toji' : a.name}</span>
+                          </span>
+                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                            hasGated
+                              ? 'bg-amber-50 text-amber-800 border-amber-300'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {hasGated ? 'GATED' : 'READY'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-silver-600 truncate leading-tight">{a.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sidebar Footer */}
+              <div className="pt-2 border-t border-silver-200 text-center flex-shrink-0">
+                <span className="text-[10px] font-mono text-silver-500">
+                  ⚡ Cluster Online • 9 Agents
+                </span>
+              </div>
+            </aside>
+
+            {/* ── RIGHT MAIN AREA: FIXED-IN-PLACE CHATBOT WINDOW ── */}
+            <section className="flex-1 flex flex-col bg-white border border-silver-400/80 rounded-2xl shadow-sm h-full overflow-hidden relative min-h-0">
+              
+              {/* Top Sub-header (Chatbot Title Bar) */}
+              <div className="px-5 py-2.5 border-b border-silver-200 bg-silver-50/70 flex items-center justify-between text-xs font-mono flex-shrink-0">
+                <div className="flex items-center gap-2 truncate text-silver-700">
+                  <span className="text-accent-primary font-bold">Thread:</span>
+                  <span className="truncate max-w-md font-semibold text-silver-900">
+                    {conversationId ? (conversations.find(c => c.id === conversationId)?.title || "Active Chat") : "New Chat Session"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-silver-500 flex-shrink-0">
+                  <span>{messages.length} msgs</span>
+                  {conversationId && (
+                    <button
+                      onClick={() => handleDeleteConversation(conversationId)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-100/80 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 transition-all"
+                      title="Delete this conversation thread"
+                    >
+                      <span>🗑️</span>
+                      <span>Delete Thread</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={startNewChat}
+                    className="text-silver-700 hover:text-silver-950 hover:bg-silver-100 border border-silver-300 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 transition-all"
+                    title="Start fresh new session"
+                  >
+                    <span>+ New Chat</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Center: Message Stream (Scrollable within fixed chatbot container) */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-5 scroll-smooth min-h-0">
                 {messages.map(m => {
                   if (m.role === 'user') {
                     return (
@@ -525,7 +775,7 @@
                           <span>{m.time}</span>
                           <span className="font-bold text-silver-800">You</span>
                         </div>
-                        <div className="max-w-2xl bg-silver-900 text-white px-5 py-3.5 rounded-2xl rounded-tr-xs text-sm leading-relaxed shadow-sm font-sans whitespace-pre-wrap">
+                        <div className="max-w-2xl bg-silver-900 text-white px-5 py-3 rounded-2xl rounded-tr-xs text-sm leading-relaxed shadow-sm font-sans whitespace-pre-wrap">
                           {m.text}
                         </div>
                       </div>
@@ -535,7 +785,7 @@
                   if (m.role === 'clarification') {
                     return (
                       <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
-                        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 shadow-sm space-y-3 w-full">
+                        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 shadow-sm space-y-2.5 w-full">
                           <div className="flex items-center justify-between text-amber-900 font-bold text-sm">
                             <span className="flex items-center gap-2">
                               <span>⚠️</span>
@@ -551,7 +801,7 @@
                               <button
                                 key={agent}
                                 onClick={() => handleExecute(`[For ${agent}] ${m.originalCommand}`)}
-                                className="px-3.5 py-2 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
+                                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-accent-primary hover:text-white border border-amber-300 text-xs font-mono font-bold text-accent-primary transition-all flex items-center gap-2 shadow-xs"
                               >
                                 <span>🎯 Route to:</span>
                                 <span className="underline">{agent}</span>
@@ -566,9 +816,9 @@
                   if (m.role === 'error') {
                     return (
                       <div key={m.id} className="flex flex-col items-start space-y-1 max-w-2xl">
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm w-full">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs font-mono text-red-900 flex items-start gap-3 shadow-sm w-full">
                           <span className="text-base text-red-600">⚠️</span>
-                          <div className="flex-1 space-y-1">
+                          <div className="flex-1 space-y-0.5">
                             <span className="font-bold text-red-700 uppercase tracking-wider block">Execution Notice</span>
                             <p className="text-red-800">{m.text}</p>
                           </div>
@@ -580,18 +830,20 @@
 
                   // Default: Assistant Message
                   const isRaw = viewModes[m.id] === 'raw';
+                  const displayAgentName = m.agent === 'general_chat_agent' ? 'Toji' : (m.agent || 'Assistant');
 
                   return (
                     <div key={m.id} className="flex flex-col items-start space-y-2 max-w-3xl">
                       {/* Assistant Header Capsule */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 w-full border-b border-silver-200 pb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-3 w-full border-b border-silver-200 pb-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs">
+                          <span className="w-5 h-5 rounded-md bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs">
                             ✓
                           </span>
                           <span className="text-xs font-mono font-bold text-silver-600 uppercase">Agent:</span>
-                          <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded bg-silver-900 text-white shadow-xs">
-                            {m.agent}
+                          <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded bg-silver-900 text-white shadow-xs flex items-center gap-1.5">
+                            <span>{getAgentBadge(m.agent)}</span>
+                            <span>{displayAgentName}</span>
                           </span>
                         </div>
 
@@ -633,7 +885,7 @@
                       </div>
 
                       {/* Content Body */}
-                      <div className="w-full bg-silver-50/70 border border-silver-200 rounded-2xl p-5 shadow-xs transition-all">
+                      <div className="w-full bg-silver-50/70 border border-silver-200 rounded-2xl p-4 shadow-xs transition-all">
                         {isRaw ? (
                           <pre className="bg-slate-900 rounded-xl p-4 text-xs font-mono text-slate-100 whitespace-pre-wrap overflow-x-auto">
                             {m.text}
@@ -654,32 +906,30 @@
                   <div className="flex flex-col items-start space-y-3 max-w-2xl w-full">
                     <div className="flex items-center gap-2">
                       <span className="w-4 h-4 rounded-full border-2 border-accent-primary border-t-transparent animate-spin" />
-                      <span className="text-xs font-mono font-bold text-silver-700 animate-pulse">Agent is thinking & composing response...</span>
+                      <span className="text-xs font-mono font-bold text-silver-700 animate-pulse">Toji is executing & orchestrating response...</span>
                     </div>
-                    <div className="w-full bg-silver-50/80 border border-silver-200 rounded-2xl p-5 space-y-3 animate-pulse shadow-xs">
+                    <div className="w-full bg-silver-50/80 border border-silver-200 rounded-2xl p-4 space-y-2.5 animate-pulse shadow-xs">
                       <div className="h-4 bg-silver-300 rounded-md w-3/4"></div>
                       <div className="h-3.5 bg-silver-200 rounded-md w-11/12"></div>
                       <div className="h-3.5 bg-silver-200 rounded-md w-4/5"></div>
-                      <div className="h-3 bg-silver-100 rounded-md w-2/3"></div>
                     </div>
                   </div>
                 )}
 
-
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Bottom Conversational Dock */}
-              <div className="border-t border-silver-300 bg-white p-4 space-y-3">
+              {/* Bottom Fixed Input Dock */}
+              <div className="border-t border-silver-300 bg-white p-3.5 space-y-2.5 flex-shrink-0">
                 {/* Quick-Prompt Suggestions Carousel */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
-                  <span className="text-[11px] font-mono text-silver-500 flex-shrink-0">Suggestions:</span>
-                  {presets.slice(0, 4).map((p, i) => (
+                  <span className="text-[11px] font-mono text-silver-500 flex-shrink-0">Prompts:</span>
+                  {presets.slice(0, 5).map((p, i) => (
                     <button
                       key={i}
                       onClick={() => handleExecute(p.cmd)}
                       disabled={loading}
-                      className="flex-shrink-0 px-2.5 py-1 rounded-full bg-silver-100 hover:bg-silver-200 border border-silver-300 text-silver-700 hover:text-silver-900 transition-all font-medium disabled:opacity-50"
+                      className="flex-shrink-0 px-2.5 py-1 rounded-full bg-silver-100 hover:bg-silver-200 border border-silver-300 text-silver-700 hover:text-silver-900 transition-all font-medium disabled:opacity-50 text-[11px]"
                     >
                       {p.label}
                     </button>
@@ -697,9 +947,9 @@
                         handleExecute();
                       }
                     }}
-                    placeholder="Type a message or prompt... (Press ↵ Enter to send, Shift+Enter for new line)"
+                    placeholder="Message Toji or command an agent... (Press ↵ Enter to send, Shift+Enter for new line)"
                     rows={2}
-                    className="flex-1 bg-transparent px-3 py-1.5 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none resize-none font-sans"
+                    className="flex-1 bg-transparent px-3 py-1 text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none resize-none font-sans"
                   />
 
                   <div className="flex items-center gap-2 pr-2">
@@ -728,65 +978,11 @@
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] font-mono text-silver-500 px-1">
-                  <span>Chatbot Powered by Multi-Agent Router</span>
+                  <span>Chatbot Powered by Toji & Multi-Agent Router</span>
                   <span>Input auto-clears on send</span>
                 </div>
               </div>
-            </div>
-
-            {/* Right Inspector Rail (4 Cols) */}
-            <div className="lg:col-span-4 space-y-5">
-              {/* Agent Roster Card */}
-              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
-                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-accent-primary flex items-center justify-between">
-                  <span>Supported Agent Roster</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                </h3>
-                <div className="space-y-2.5">
-                  {[
-                    { id: "info_agent", name: "Info Agent", desc: "Farhan Aaqil's projects portfolio, system architecture, how it works, and common talk.", icon: "ℹ️" },
-                    { id: "career_agent", name: "Career Agent", desc: "Resume tailoring, skill-gap analysis, cover letters.", icon: "💼" },
-                    { id: "research_agent", name: "Research Agent", desc: "ArXiv literature retrieval, synthesis, peer reviews.", icon: "🔬" },
-                    { id: "growth_content_agent", name: "Growth Agent", desc: "Tech articles, Dev.to/Hashnode drafts, social threads.", icon: "✍️" },
-                    { id: "critic_agent", name: "Critic Agent", desc: "Objective scoring, rubric reviews, gap critiques.", icon: "🔍" },
-                  ].map(a => (
-                    <div key={a.id} className="p-3 rounded-xl bg-silver-50 border border-silver-200 space-y-1 hover:border-silver-300 transition-all">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-silver-900 flex items-center gap-2">
-                          <span>{a.icon}</span>
-                          <span>{a.name}</span>
-                        </span>
-                        <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">READY</span>
-                      </div>
-                      <p className="text-[11px] text-silver-700 leading-tight">{a.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recent Dispatches Feed */}
-              <div className="bg-white border border-silver-400/80 rounded-2xl p-5 shadow-sm space-y-3.5">
-                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-silver-900 flex items-center justify-between">
-                  <span>Session Activity</span>
-                  <span className="text-[10px] font-mono text-silver-600">{history.length} items</span>
-                </h3>
-                <div className="space-y-2">
-                  {history.map((h, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleExecute(h.cmd)}
-                      className="w-full text-left p-2.5 rounded-xl bg-silver-50 hover:bg-silver-100 border border-silver-200 hover:border-accent-primary/50 transition-all space-y-1 block"
-                    >
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-mono text-accent-primary font-bold">{h.agent}</span>
-                        <span className="text-silver-500 text-[10px]">{h.time}</span>
-                      </div>
-                      <p className="text-xs text-silver-800 truncate">{h.cmd}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            </section>
           </div>
         </div>
       );
@@ -1449,6 +1645,11 @@
         return () => clearInterval(t);
       }, []);
 
+      useEffect(() => {
+        document.body.style.overflow = tab === 'dispatch' ? 'hidden' : 'auto';
+        return () => { document.body.style.overflow = 'auto'; };
+      }, [tab]);
+
       const navItems = [
         { id: 'dispatch', label: 'Dispatch Chat', icon: '💬' },
         { id: 'pipelines', label: 'Pipelines', icon: '🚀' },
@@ -1458,9 +1659,9 @@
       ];
 
       return (
-        <div className="min-h-screen flex flex-col text-text-primary">
+        <div className={`text-text-primary flex flex-col ${tab === 'dispatch' ? 'h-screen max-h-screen overflow-hidden' : 'min-h-screen'}`}>
           {/* Top Executive Header */}
-          <header className="sticky top-0 z-50 bg-white/95 border-b border-silver-400/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between shadow-xs">
+          <header className="sticky top-0 z-50 bg-white/95 border-b border-silver-400/80 backdrop-blur-md px-6 py-2.5 flex items-center justify-between shadow-xs flex-shrink-0">
             <div className="flex items-center gap-6">
               {/* Brand Emblem */}
               <div className="flex items-center gap-3">
@@ -1561,7 +1762,7 @@
           </header>
 
           {/* Mobile Tab Bar */}
-          <div className="md:hidden flex overflow-x-auto bg-white border-b border-silver-300 p-2 gap-1">
+          <div className="md:hidden flex overflow-x-auto bg-white border-b border-silver-300 p-2 gap-1 flex-shrink-0">
             {navItems.map(item => (
               <button
                 key={item.id}
@@ -1577,7 +1778,7 @@
           </div>
 
           {/* Main Stage */}
-          <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
+          <main className={`w-full mx-auto ${tab === 'dispatch' ? 'flex-1 min-h-0 max-w-7xl px-4 md:px-6 py-2.5 flex flex-col overflow-hidden' : 'flex-1 max-w-7xl p-6 md:p-8'}`}>
             {tab === 'dispatch' && <DispatchView />}
             {tab === 'pipelines' && <PipelinesView onSelectRun={id => { setRunId(id); setTab('runs'); }} />}
             {tab === 'runs' && (runId ? <RunDetailView runId={runId} onBack={() => setTab('pipelines')} /> : <PipelinesView onSelectRun={id => { setRunId(id); setTab('runs'); }} />)}
@@ -1587,7 +1788,7 @@
           </main>
 
           {/* Sleek Minimal Footer */}
-          <footer className="border-t border-silver-400/60 py-4 px-6 text-center text-xs font-mono text-silver-700 bg-white/40">
+          <footer className={`border-t border-silver-400/60 text-center font-mono text-silver-700 bg-white/40 flex-shrink-0 ${tab === 'dispatch' ? 'py-1.5 px-4 text-[11px]' : 'py-4 px-6 text-xs'}`}>
             Orchestrator Agent Core Service • Metallic Silver Executive Plane • Audited Concurrency & Security Invariants
           </footer>
         </div>

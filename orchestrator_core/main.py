@@ -1,7 +1,7 @@
 """
 orchestrator_core/main.py
 
-FastAPI composition root for Orchestrator Agent v2.
+FastAPI composition root for Orchestrator Agent.
 Initializes the application with lifecycle-managed database migrations,
 structured request logging middleware, exception mapping, and health check.
 """
@@ -142,6 +142,8 @@ from orchestrator_core.routes import runs as runs_module
 from orchestrator_core.routes import approvals as approvals_module
 from orchestrator_core.routes import pipeline as pipeline_module
 from orchestrator_core.routes import router_eval as router_eval_module
+from orchestrator_core.routes import conversations as conversations_module
+from orchestrator_core.routes import agents as agents_module
 
 auth_dependencies = [Depends(verify_bearer_token)]
 
@@ -151,6 +153,8 @@ app.include_router(runs_module.router, dependencies=auth_dependencies)
 app.include_router(approvals_module.router, dependencies=auth_dependencies)
 app.include_router(pipeline_module.router, dependencies=auth_dependencies)
 app.include_router(router_eval_module.router, dependencies=auth_dependencies)
+app.include_router(conversations_module.router, dependencies=auth_dependencies)
+app.include_router(agents_module.router, dependencies=auth_dependencies)
 
 
 # ── Health check endpoint ─────────────────────────────────────────────────────

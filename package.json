@@ -1,0 +1,12 @@
+{
+  "name": "orchestrator-agent",
+  "version": "1.0.0",
+  "description": "Orchestrator Agent Core API and React Control Plane",
+  "private": true,
+  "scripts": {
+    "dev": "python -m uvicorn orchestrator_core.main:app --host 0.0.0.0 --port 8000 --reload",
+    "start": "python -m uvicorn orchestrator_core.main:app --host 0.0.0.0 --port 8000",
+    "test": "pytest -v"
+  },
+  "license": "MIT"
+}
