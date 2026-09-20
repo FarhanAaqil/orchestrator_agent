@@ -61,8 +61,13 @@ htmlcov/
 *.iml
 *.iws
 
-# Node modules (if any frontend components are later added)
+# Node modules
 node_modules/
+toji-shell/node_modules/
+
+# Electron build output
+toji-shell/dist/
+toji-shell/out/
 
 # Planning documents (not part of deployed codebase)
 New plan/

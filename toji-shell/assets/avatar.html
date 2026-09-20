@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'unsafe-inline';" />
+  <title>Toji</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width:  120px;
+      height: 120px;
+      background: transparent;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    /* ── Container ── */
+    #avatar-wrap {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Lottie container ── */
+    #lottie-container {
+      width: 100px;
+      height: 100px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ── Glow ring (CSS, behind lottie) ── */
+    .glow-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(217,119,6,0.15) 0%, transparent 70%);
+      animation: glow-pulse 3s ease-in-out infinite;
+      z-index: 1;
+    }
+
+    /* ── State overlays ── */
+    .state-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      animation: none;
+      z-index: 3;
+      pointer-events: none;
+      transition: border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    /* Idle: subtle amber ring */
+    body.state-idle .state-ring {
+      border-color: rgba(217,119,6,0.3);
+      box-shadow: 0 0 12px rgba(217,119,6,0.2);
+      animation: ring-idle 3s ease-in-out infinite;
+    }
+
+    /* Thinking: spinning cyan ring */
+    body.state-thinking .state-ring {
+      border-color: rgba(6,182,212,0.6);
+      border-top-color: transparent;
+      box-shadow: 0 0 16px rgba(6,182,212,0.3);
+      animation: ring-spin 1.2s linear infinite;
+    }
+
+    /* Speaking: pulsing green ring */
+    body.state-speaking .state-ring {
+      border-color: rgba(16,185,129,0.6);
+      box-shadow: 0 0 20px rgba(16,185,129,0.4);
+      animation: ring-speak 0.6s ease-in-out infinite alternate;
+    }
+
+    /* Error: red ring */
+    body.state-error .state-ring {
+      border-color: rgba(220,38,38,0.6);
+      box-shadow: 0 0 16px rgba(220,38,38,0.4);
+      animation: ring-error 0.3s ease-in-out infinite alternate;
+    }
+
+    /* ── Keyframes ── */
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.5; transform: scale(1);    }
+      50%       { opacity: 1;   transform: scale(1.1);  }
+    }
+    @keyframes ring-idle {
+      0%, 100% { opacity: 0.4; transform: scale(1);    }
+      50%       { opacity: 0.8; transform: scale(1.04); }
+    }
+    @keyframes ring-spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes ring-speak {
+      from { transform: scale(1);    box-shadow: 0 0 12px rgba(16,185,129,0.3); }
+      to   { transform: scale(1.08); box-shadow: 0 0 24px rgba(16,185,129,0.5); }
+    }
+    @keyframes ring-error {
+      from { opacity: 0.7; }
+      to   { opacity: 1;   }
+    }
+
+    /* ── Speaking bars (shown on top of avatar when speaking) ── */
+    .speak-bars {
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      gap: 2px;
+      z-index: 4;
+    }
+    body.state-speaking .speak-bars { display: flex; }
+
+    .speak-bar {
+      width: 3px;
+      border-radius: 2px;
+      background: #10b981;
+      animation: bar-wave 0.8s ease-in-out infinite alternate;
+    }
+    .speak-bar:nth-child(1) { height: 8px;  animation-delay: 0s;    }
+    .speak-bar:nth-child(2) { height: 14px; animation-delay: 0.15s; }
+    .speak-bar:nth-child(3) { height: 10px; animation-delay: 0.3s;  }
+    .speak-bar:nth-child(4) { height: 16px; animation-delay: 0.1s;  }
+    .speak-bar:nth-child(5) { height: 8px;  animation-delay: 0.25s; }
+
+    @keyframes bar-wave {
+      from { transform: scaleY(0.4); opacity: 0.6; }
+      to   { transform: scaleY(1);   opacity: 1;   }
+    }
+  </style>
+</head>
+<body class="state-idle">
+
+  <div id="avatar-wrap">
+    <div class="glow-ring"></div>
+    <div class="state-ring"></div>
+    <div id="lottie-container"></div>
+    <div class="speak-bars">
+      <div class="speak-bar"></div>
+      <div class="speak-bar"></div>
+      <div class="speak-bar"></div>
+      <div class="speak-bar"></div>
+      <div class="speak-bar"></div>
+    </div>
+  </div>
+
+  <!-- lottie-web (bundled via CDN, loaded via CSP-allowed cdnjs) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer"></script>
+
+  <script>
+    // ── Load & play Lottie animation ─────────────────────────────────────────
+    let anim = null;
+
+    async function loadLottie() {
+      try {
+        const resp = await fetch('./toji-idle.json');
+        if (!resp.ok) throw new Error('JSON fetch failed');
+        const animData = await resp.json();
+
+        anim = lottie.loadAnimation({
+          container:  document.getElementById('lottie-container'),
+          renderer:   'svg',
+          loop:       true,
+          autoplay:   true,
+          animationData: animData,
+        });
+      } catch (err) {
+        console.warn('[Avatar] Lottie load failed, falling back to CSS only:', err);
+        // Fallback: render a plain amber orb via CSS
+        const el = document.getElementById('lottie-container');
+        el.innerHTML = `
+          <div style="
+            width:80px;height:80px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%, #FCD34D, #D97706 60%, #92400E);
+            box-shadow:0 0 24px rgba(217,119,6,0.5);
+            margin:10px auto;
+            animation:glow-pulse 3s ease-in-out infinite;
+          "></div>`;
+      }
+    }
+
+    loadLottie();
+
+    // ── IPC: receive state changes from main process ─────────────────────────
+    if (window.toji) {
+      window.toji.onAvatarState((state) => {
+        // Remove all state classes, add new one
+        document.body.className = `state-${state}`;
+
+        // Change lottie speed / direction based on state
+        if (!anim) return;
+        switch (state) {
+          case 'idle':
+            anim.setSpeed(1);
+            anim.play();
+            break;
+          case 'thinking':
+            anim.setSpeed(2.5);
+            anim.play();
+            break;
+          case 'speaking':
+            anim.setSpeed(1.8);
+            anim.play();
+            break;
+          case 'error':
+            anim.setSpeed(0.5);
+            anim.play();
+            break;
+        }
+      });
+    }
+  </script>
+</body>
+</html>
