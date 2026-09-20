@@ -386,7 +386,82 @@
       const [conversationId, setConversationId] = useState(null);
       const [conversations, setConversations] = useState([]);
       const [agentRoster, setAgentRoster] = useState([]);
+      const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 900);
+      const [isListening, setIsListening] = useState(false);
+      const [voiceOutput, setVoiceOutput] = useState(false);
       const messagesEndRef = useRef(null);
+      const recognitionRef = useRef(null);
+
+      // Listen for global voice toggle from tray or IPC
+      useEffect(() => {
+        if (window.toji?.onVoiceToggle) {
+          window.toji.onVoiceToggle(() => {
+            toggleListening();
+          });
+        }
+      }, [isListening]);
+
+      const speakText = (text) => {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const clean = text.replace(/[*#`_~\[\]\(\)>]/g, '').trim();
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.rate = 1.05;
+        utterance.pitch = 0.95;
+        utterance.onstart = () => {
+          if (window.toji?.setAvatarState) window.toji.setAvatarState('speaking');
+        };
+        utterance.onend = () => {
+          if (window.toji?.setAvatarState) window.toji.setAvatarState('idle');
+        };
+        utterance.onerror = () => {
+          if (window.toji?.setAvatarState) window.toji.setAvatarState('idle');
+        };
+        window.speechSynthesis.speak(utterance);
+      };
+
+      const toggleListening = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          alert("Speech recognition is not supported in this browser environment.");
+          return;
+        }
+        if (isListening) {
+          recognitionRef.current?.stop();
+          setIsListening(false);
+          if (window.toji?.setAvatarState) window.toji.setAvatarState('idle');
+          return;
+        }
+        try {
+          const rec = new SpeechRecognition();
+          rec.continuous = false;
+          rec.interimResults = false;
+          rec.lang = 'en-US';
+          rec.onstart = () => {
+            setIsListening(true);
+            if (window.toji?.setAvatarState) window.toji.setAvatarState('thinking');
+          };
+          rec.onresult = (evt) => {
+            const transcript = evt.results[0][0].transcript;
+            setCommand(transcript);
+            setIsListening(false);
+            handleExecute(transcript);
+          };
+          rec.onerror = (e) => {
+            console.warn("Speech recognition error:", e);
+            setIsListening(false);
+            if (window.toji?.setAvatarState) window.toji.setAvatarState('idle');
+          };
+          rec.onend = () => {
+            setIsListening(false);
+          };
+          rec.start();
+          recognitionRef.current = rec;
+        } catch (err) {
+          console.error("Speech start error:", err);
+          setIsListening(false);
+        }
+      };
 
       const defaultWelcome = {
         id: "welcome-1",
@@ -492,6 +567,7 @@
 
         setCommand("");
         setLoading(true);
+        if (window.toji?.setAvatarState) window.toji.setAvatarState('thinking');
 
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const userMsgId = Date.now();
@@ -517,11 +593,23 @@
             }
           ]);
 
+          if (voiceOutput) {
+            speakText(data.output);
+          } else if (window.toji?.setAvatarState) {
+            window.toji.setAvatarState('speaking');
+            setTimeout(() => window.toji?.setAvatarState('idle'), 3500);
+          }
+
           if (data.metadata && data.metadata.conversation_id) {
             setConversationId(data.metadata.conversation_id);
           }
           loadConversations();
         } catch (err) {
+          if (window.toji?.setAvatarState) {
+            window.toji.setAvatarState('error');
+            setTimeout(() => window.toji?.setAvatarState('idle'), 3500);
+          }
+
           if (err.isClarification) {
             setMessages(prev => [
               ...prev,
@@ -613,8 +701,26 @@
                 Autonomous multi-agent cluster with conversational memory and audited execution safety.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-silver-800">Confidence Gate:</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="px-2.5 py-1 rounded-lg border border-silver-400 bg-white hover:bg-silver-100 text-silver-800 text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                title="Toggle Saved Threads & Agent Fleet sidebar"
+              >
+                <span>{sidebarOpen ? '◀ Hide Sidebar' : '☰ Show Sidebar'}</span>
+              </button>
+              <button
+                onClick={() => setVoiceOutput(!voiceOutput)}
+                className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-xs ${
+                  voiceOutput
+                    ? 'bg-amber-100 border-amber-400 text-amber-900 font-extrabold'
+                    : 'bg-white border-silver-400 text-silver-700 hover:bg-silver-100'
+                }`}
+                title="Toggle automatic speech synthesis for Toji's replies"
+              >
+                <span>{voiceOutput ? '🔊 Voice: ON' : '🔈 Voice: OFF'}</span>
+              </button>
+              <span className="text-xs font-mono text-silver-800 hidden sm:inline">Confidence Gate:</span>
               <span className="px-2.5 py-0.5 rounded-md bg-white border border-silver-400 text-accent-primary font-mono text-xs font-bold shadow-xs">
                 ≥ 0.60
               </span>
@@ -625,6 +731,7 @@
           <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 h-full overflow-hidden">
             
             {/* ── LEFT SIDEBAR (Saved Chat Threads + Fleet Roster) ── */}
+            {sidebarOpen && (
             <aside className="w-full md:w-80 flex-shrink-0 flex flex-col bg-white border border-silver-400/80 rounded-2xl p-3.5 shadow-sm h-full overflow-hidden">
               
               {/* Top: New Chat Action */}
@@ -731,6 +838,7 @@
                 </span>
               </div>
             </aside>
+            )}
 
             {/* ── RIGHT MAIN AREA: FIXED-IN-PLACE CHATBOT WINDOW ── */}
             <section className="flex-1 flex flex-col bg-white border border-silver-400/80 rounded-2xl shadow-sm h-full overflow-hidden relative min-h-0">
@@ -961,6 +1069,19 @@
                         Clear
                       </button>
                     )}
+
+                    <button
+                      onClick={toggleListening}
+                      type="button"
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-all shadow-xs ${
+                        isListening
+                          ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200'
+                          : 'bg-silver-200 hover:bg-silver-300 text-silver-800'
+                      }`}
+                      title={isListening ? "Listening... (click to cancel)" : "Speak to Toji (Microphone)"}
+                    >
+                      <span>{isListening ? '🔴' : '🎙️'}</span>
+                    </button>
 
                     <button
                       onClick={() => handleExecute()}

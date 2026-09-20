@@ -1,0 +1,21 @@
+{
+  "name": "toji-shell",
+  "productName": "Toji",
+  "version": "1.0.0",
+  "description": "Toji — Desktop presence shell for the Orchestrator Agent",
+  "main": "main.js",
+  "scripts": {
+    "start": "cross-env NODE_PATH=C:\\Users\\aaqil\\toji-shell-deps\\node_modules C:\\Users\\aaqil\\toji-shell-deps\\node_modules\\.bin\\electron.cmd .",
+    "dev": "cross-env TOJI_DEV=1 NODE_PATH=C:\\Users\\aaqil\\toji-shell-deps\\node_modules C:\\Users\\aaqil\\toji-shell-deps\\node_modules\\.bin\\electron.cmd . --enable-logging"
+  },
+  "keywords": ["orchestrator", "toji", "desktop", "electron"],
+  "author": "Farhan Aaqil",
+  "license": "MIT",
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^32.2.0"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  }
+}
