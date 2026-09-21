@@ -46,4 +46,15 @@ contextBridge.exposeInMainWorld('toji', {
 
   /** Toggle the chat overlay window */
   toggleOverlay: () => ipcRenderer.send('toji:toggle-overlay'),
+
+  /** Get current UI mode ('interface' | 'voice') */
+  getMode: () => ipcRenderer.invoke('toji:get-mode'),
+
+  /** Set current UI mode ('interface' | 'voice') */
+  setMode: (mode) => ipcRenderer.send('toji:set-mode', mode),
+
+  /** Subscribe to mode changes */
+  onModeChange: (callback) => {
+    ipcRenderer.on('toji:mode-changed', (_event, mode) => callback(mode));
+  },
 });

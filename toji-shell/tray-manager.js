@@ -101,13 +101,29 @@ class TrayManager {
         label: 'Show / Hide Desktop Pet',
         click: () => this._wm.togglePet(),
       },
+      { type: 'separator' },
+      {
+        label: 'Mode: Interface (Chat + Pet)',
+        type: 'radio',
+        checked: require('./config-manager').getMode() === 'interface',
+        click: () => {
+          require('./config-manager').setMode('interface');
+          this._buildMenu();
+        },
+      },
+      {
+        label: 'Mode: Voice-Only (Low GPU/CPU)',
+        type: 'radio',
+        checked: require('./config-manager').getMode() === 'voice',
+        click: () => {
+          require('./config-manager').setMode('voice');
+          this._buildMenu();
+        },
+      },
+      { type: 'separator' },
       {
         label: 'Open Executive Dashboard',
         click: () => this._wm.createDashboard(),
-      },
-      {
-        label: 'Toggle Voice Mode',
-        click: () => this._wm.toggleVoice(),
       },
       {
         label: 'Launch at Startup',

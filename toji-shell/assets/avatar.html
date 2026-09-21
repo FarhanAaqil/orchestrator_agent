@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline';" />
-  <title>Toji</title>
+        content="default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" />
+  <title>Toji Avatar</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -18,234 +18,356 @@
       justify-content: center;
       -webkit-app-region: drag;
       user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    /* ── Container ── */
+    /* ── Main Interactive Wrapper ── */
     #avatar-wrap {
       position: relative;
-      width: 100px;
-      height: 100px;
+      width: 104px;
+      height: 104px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    #avatar-wrap:hover {
-      transform: scale(1.08);
-    }
-    #avatar-wrap:active {
-      transform: scale(0.95);
-    }
-
-    /* ── Lottie container ── */
-    #lottie-container {
-      width: 100px;
-      height: 100px;
-      position: relative;
-      z-index: 2;
-    }
-
-    /* ── Glow ring (CSS, behind lottie) ── */
-    .glow-ring {
-      position: absolute;
-      inset: 0;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(217,119,6,0.15) 0%, transparent 70%);
-      animation: glow-pulse 3s ease-in-out infinite;
+      background: radial-gradient(circle, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 28, 0.98) 70%, rgba(5, 8, 16, 1) 100%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 177, 98, 0.15);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    }
+
+    #avatar-wrap:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8), 0 0 16px rgba(255, 177, 98, 0.3), inset 0 0 0 1.5px rgba(255, 177, 98, 0.4);
+    }
+
+    #avatar-wrap:active {
+      transform: scale(0.96);
+    }
+
+    /* ── Outer State Halo Ring ── */
+    .halo-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      pointer-events: none;
+      transition: all 0.4s ease;
       z-index: 1;
     }
 
-    /* ── State overlays ── */
-    .state-ring {
-      position: absolute;
-      inset: -6px;
-      border-radius: 50%;
-      border: 2px solid transparent;
-      animation: none;
-      z-index: 3;
-      pointer-events: none;
-      transition: border-color 0.4s ease, box-shadow 0.4s ease;
+    /* ── State Variations (§4) ── */
+    /* Idle: subtle, calm breathing pulse */
+    body.state-idle .halo-ring {
+      border-color: rgba(255, 177, 98, 0.25);
+      box-shadow: 0 0 10px rgba(255, 177, 98, 0.15);
+      animation: breathe 4s ease-in-out infinite;
     }
 
-    /* Idle: subtle amber ring */
-    body.state-idle .state-ring {
-      border-color: rgba(217,119,6,0.3);
-      box-shadow: 0 0 12px rgba(217,119,6,0.2);
-      animation: ring-idle 3s ease-in-out infinite;
+    /* Thinking: subtle head tilt & amber accent scan */
+    body.state-thinking #avatar-svg {
+      transform: rotate(2.5deg);
+      transition: transform 0.4s ease;
     }
-
-    /* Thinking: spinning cyan ring */
-    body.state-thinking .state-ring {
-      border-color: rgba(6,182,212,0.6);
+    body.state-thinking .halo-ring {
+      border-color: rgba(255, 177, 98, 0.65);
       border-top-color: transparent;
-      box-shadow: 0 0 16px rgba(6,182,212,0.3);
-      animation: ring-spin 1.2s linear infinite;
+      box-shadow: 0 0 16px rgba(255, 177, 98, 0.4);
+      animation: spin-halo 1.4s linear infinite;
     }
 
-    /* Speaking: pulsing green ring */
-    body.state-speaking .state-ring {
-      border-color: rgba(16,185,129,0.6);
-      box-shadow: 0 0 20px rgba(16,185,129,0.4);
-      animation: ring-speak 0.6s ease-in-out infinite alternate;
+    /* Speaking: active voice equalizer & warm pulse */
+    body.state-speaking .halo-ring {
+      border-color: rgba(16, 185, 129, 0.7);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+      animation: speak-pulse 0.7s ease-in-out infinite alternate;
+    }
+    body.state-speaking .voice-bars {
+      display: flex;
     }
 
-    /* Error: red ring */
-    body.state-error .state-ring {
-      border-color: rgba(220,38,38,0.6);
-      box-shadow: 0 0 16px rgba(220,38,38,0.4);
-      animation: ring-error 0.3s ease-in-out infinite alternate;
+    /* Needs-You (§3 proactive surfacing: pending approval) */
+    body.state-needs-you .halo-ring {
+      border-color: #FFB162;
+      box-shadow: 0 0 22px rgba(255, 177, 98, 0.7);
+      animation: alert-pulse 1s ease-in-out infinite alternate;
+    }
+    body.state-needs-you .notification-dot {
+      display: block;
+      background: #FFB162;
+      box-shadow: 0 0 10px #FFB162;
     }
 
-    /* ── Keyframes ── */
-    @keyframes glow-pulse {
-      0%, 100% { opacity: 0.5; transform: scale(1);    }
-      50%       { opacity: 1;   transform: scale(1.1);  }
-    }
-    @keyframes ring-idle {
-      0%, 100% { opacity: 0.4; transform: scale(1);    }
-      50%       { opacity: 0.8; transform: scale(1.04); }
-    }
-    @keyframes ring-spin {
-      to { transform: rotate(360deg); }
-    }
-    @keyframes ring-speak {
-      from { transform: scale(1);    box-shadow: 0 0 12px rgba(16,185,129,0.3); }
-      to   { transform: scale(1.08); box-shadow: 0 0 24px rgba(16,185,129,0.5); }
-    }
-    @keyframes ring-error {
-      from { opacity: 0.7; }
-      to   { opacity: 1;   }
+    /* Found-Something (§3 proactive surfacing: eval/task finished) */
+    body.state-found-something .halo-ring {
+      border-color: #10B981;
+      box-shadow: 0 0 24px rgba(16, 185, 129, 0.8);
+      animation: found-flash 1.2s ease-out 1;
     }
 
-    /* ── Speaking bars (shown on top of avatar when speaking) ── */
-    .speak-bars {
+    /* Starting (Docker backend warmup per §1) */
+    body.state-starting .halo-ring {
+      border-color: rgba(255, 177, 98, 0.5);
+      border-right-color: transparent;
+      border-left-color: transparent;
+      animation: spin-halo 1s linear infinite;
+    }
+
+    /* Error state */
+    body.state-error .halo-ring {
+      border-color: #EF4444;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.6);
+      animation: error-glint 0.4s ease-in-out infinite alternate;
+    }
+
+    /* ── SVG Graphic Container ── */
+    #avatar-svg {
+      width: 78px;
+      height: 78px;
+      z-index: 2;
+      transition: transform 0.3s ease;
+    }
+
+    /* Eye Glint Accent (#FFB162) */
+    .eye-glint {
+      fill: #FFB162;
+      filter: drop-shadow(0 0 4px #FFB162);
+      transition: opacity 0.3s ease;
+    }
+
+    body.state-idle .eye-glint {
+      animation: eye-pulse 4s ease-in-out infinite;
+    }
+    body.state-thinking .eye-glint {
+      fill: #FDE047;
+      filter: drop-shadow(0 0 6px #FDE047);
+    }
+    body.state-error .eye-glint {
+      fill: #EF4444;
+      filter: drop-shadow(0 0 6px #EF4444);
+    }
+
+    /* ── Voice Waveform Bars ── */
+    .voice-bars {
       position: absolute;
-      bottom: 4px;
+      bottom: 8px;
       left: 50%;
       transform: translateX(-50%);
       display: none;
-      gap: 2px;
-      z-index: 4;
+      gap: 2.5px;
+      align-items: flex-end;
+      height: 12px;
+      z-index: 5;
     }
-    body.state-speaking .speak-bars { display: flex; }
 
-    .speak-bar {
-      width: 3px;
-      border-radius: 2px;
-      background: #10b981;
-      animation: bar-wave 0.8s ease-in-out infinite alternate;
+    .v-bar {
+      width: 2.5px;
+      background: #FFB162;
+      border-radius: 1px;
+      box-shadow: 0 0 4px #FFB162;
+      animation: wave-bar 0.7s ease-in-out infinite alternate;
     }
-    .speak-bar:nth-child(1) { height: 8px;  animation-delay: 0s;    }
-    .speak-bar:nth-child(2) { height: 14px; animation-delay: 0.15s; }
-    .speak-bar:nth-child(3) { height: 10px; animation-delay: 0.3s;  }
-    .speak-bar:nth-child(4) { height: 16px; animation-delay: 0.1s;  }
-    .speak-bar:nth-child(5) { height: 8px;  animation-delay: 0.25s; }
+    .v-bar:nth-child(1) { height: 4px;  animation-delay: 0.1s; }
+    .v-bar:nth-child(2) { height: 9px;  animation-delay: 0.25s; }
+    .v-bar:nth-child(3) { height: 12px; animation-delay: 0.05s; }
+    .v-bar:nth-child(4) { height: 7px;  animation-delay: 0.3s; }
+    .v-bar:nth-child(5) { height: 5px;  animation-delay: 0.15s; }
 
-    @keyframes bar-wave {
-      from { transform: scaleY(0.4); opacity: 0.6; }
-      to   { transform: scaleY(1);   opacity: 1;   }
+    /* ── Proactive Notification Dot ── */
+    .notification-dot {
+      display: none;
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1.5px solid #0F172A;
+      z-index: 6;
+    }
+
+    /* ── Mode Indicator Badge (§2) ── */
+    .mode-badge {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      font-size: 8px;
+      font-weight: 700;
+      color: #94A3B8;
+      letter-spacing: 0.5px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1px 4px;
+      border-radius: 4px;
+      display: none;
+      z-index: 6;
+    }
+    body.mode-voice .mode-badge {
+      display: block;
+      color: #FFB162;
+      border-color: rgba(255, 177, 98, 0.3);
+    }
+
+    /* ── Lightweight CSS Keyframes (Low CPU/GPU) ── */
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.4; }
+      50%      { transform: scale(1.03); opacity: 0.8; }
+    }
+
+    @keyframes eye-pulse {
+      0%, 85%, 100% { opacity: 0.85; transform: scale(1); }
+      92%           { opacity: 0.1; } /* Subtle natural blink */
+      95%           { opacity: 1; transform: scale(1.15); }
+    }
+
+    @keyframes spin-halo {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes speak-pulse {
+      from { transform: scale(1); box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+      to   { transform: scale(1.04); box-shadow: 0 0 22px rgba(16, 185, 129, 0.6); }
+    }
+
+    @keyframes alert-pulse {
+      from { transform: scale(1); opacity: 0.7; }
+      to   { transform: scale(1.05); opacity: 1; }
+    }
+
+    @keyframes found-flash {
+      0%   { opacity: 0.3; transform: scale(1); }
+      50%  { opacity: 1; transform: scale(1.08); }
+      100% { opacity: 0.4; transform: scale(1); }
+    }
+
+    @keyframes error-glint {
+      from { opacity: 0.5; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes wave-bar {
+      from { transform: scaleY(0.35); }
+      to   { transform: scaleY(1); }
     }
   </style>
 </head>
 <body class="state-idle">
 
   <div id="avatar-wrap">
-    <div class="glow-ring"></div>
-    <div class="state-ring"></div>
-    <div id="lottie-container"></div>
-    <div class="speak-bars">
-      <div class="speak-bar"></div>
-      <div class="speak-bar"></div>
-      <div class="speak-bar"></div>
-      <div class="speak-bar"></div>
-      <div class="speak-bar"></div>
+    <div class="halo-ring"></div>
+    <div class="notification-dot" title="Action Pending Approval"></div>
+    <div class="mode-badge">VOICE</div>
+
+    <!-- Original Stoic Toji Silhouette (Clean, Sharp, Minimal Vector) -->
+    <svg id="avatar-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hairGrad" x1="50" y1="10" x2="50" y2="45" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#1E293B"/>
+          <stop offset="100%" stop-color="#090D16"/>
+        </linearGradient>
+        <linearGradient id="faceGrad" x1="50" y1="25" x2="50" y2="65" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#27354A"/>
+          <stop offset="60%" stop-color="#1E293B"/>
+          <stop offset="100%" stop-color="#141D2B"/>
+        </linearGradient>
+        <linearGradient id="bodyGrad" x1="50" y1="65" x2="50" y2="95" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#172033"/>
+          <stop offset="100%" stop-color="#0B0F19"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Shoulders / Muted Dark Garment Silhouette -->
+      <path d="M12 94 C 18 76, 32 68, 50 68 C 68 68, 82 76, 88 94 Z" fill="url(#bodyGrad)" stroke="#334155" stroke-width="0.8"/>
+      
+      <!-- Collarbone / Neck Line Accent -->
+      <path d="M42 68 L 50 75 L 58 68" stroke="#334155" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M46 64 L 50 71 L 54 64" stroke="#475569" stroke-width="0.8" opacity="0.6"/>
+
+      <!-- Muscular Neck -->
+      <path d="M41 50 L 41 68 L 59 68 L 59 50 Z" fill="#182232"/>
+
+      <!-- Chiseled, Angular Jawline & Head Structure -->
+      <path d="M30 34 L 33 50 L 45 61 L 50 63 L 55 61 L 67 50 L 70 34 Z" fill="url(#faceGrad)" stroke="#334155" stroke-width="0.8"/>
+
+      <!-- Stoic Brow Line Silhouette -->
+      <path d="M36 39 L 47 42 L 50 43 L 53 42 L 64 39" stroke="#0F172A" stroke-width="2.2" stroke-linecap="round"/>
+
+      <!-- Narrow, Focused Eyes with Warm Accent (#FFB162) Glint -->
+      <!-- Left Eye -->
+      <path d="M37 44 Q 42 43, 46 45" stroke="#090D16" stroke-width="1.2" stroke-linecap="round"/>
+      <circle class="eye-glint" cx="42" cy="44.5" r="1.5"/>
+
+      <!-- Right Eye -->
+      <path d="M54 45 Q 58 43, 63 44" stroke="#090D16" stroke-width="1.2" stroke-linecap="round"/>
+      <circle class="eye-glint" cx="58" cy="44.5" r="1.5"/>
+
+      <!-- Sharp Jaw Shade / Shadow Plane -->
+      <path d="M34 50 L 50 62 L 66 50" stroke="#0F172A" stroke-width="1.2" fill="none" opacity="0.4"/>
+      
+      <!-- Subtle Scar Accent on Left Lip / Jaw (Nod to Toji aesthetic) -->
+      <line x1="43" y1="55" x2="43" y2="58" stroke="#FFB162" stroke-width="1" stroke-linecap="round" opacity="0.85"/>
+
+      <!-- Dark Slicked / Cropped Hair Silhouette with Angular Strands -->
+      <path d="M28 35 C 28 20, 36 12, 50 12 C 64 12, 72 20, 72 35 C 72 37, 68 31, 65 30 C 62 29, 58 32, 54 28 C 50 25, 46 29, 42 28 C 38 27, 34 32, 31 31 C 29 32, 28 34, 28 35 Z" fill="url(#hairGrad)" stroke="#1E293B" stroke-width="0.7"/>
+
+      <!-- Sharp Front Hair Bangs/Strands -->
+      <path d="M35 22 L 40 33 L 42 27 L 49 35 L 51 28 L 58 34 L 62 25" stroke="#090D16" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+
+    <!-- Voice EQ Equalizer Waveform -->
+    <div class="voice-bars">
+      <div class="v-bar"></div>
+      <div class="v-bar"></div>
+      <div class="v-bar"></div>
+      <div class="v-bar"></div>
+      <div class="v-bar"></div>
     </div>
   </div>
 
-  <!-- lottie-web (bundled locally for 100% offline reliability) -->
-  <script src="./lottie.min.js"></script>
   <script>
-    if (typeof lottie === 'undefined') {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js';
-      document.head.appendChild(s);
-    }
-  </script>
+    // ── IPC Listeners: State & Mode Changes ─────────────────────────────────
+    if (window.toji) {
+      // Listen to avatar state changes
+      window.toji.onAvatarState((state) => {
+        // Supported: idle | thinking | speaking | needs-you | found-something | starting | error
+        document.body.className = document.body.className
+          .replace(/state-\w+/g, '')
+          .trim();
+        document.body.classList.add(`state-${state}`);
+      });
 
-  <script>
-    // ── Load & play Lottie animation ─────────────────────────────────────────
-    let anim = null;
-
-    async function loadLottie() {
-      try {
-        const resp = await fetch('./toji-idle.json');
-        if (!resp.ok) throw new Error('JSON fetch failed');
-        const animData = await resp.json();
-
-        anim = lottie.loadAnimation({
-          container:  document.getElementById('lottie-container'),
-          renderer:   'svg',
-          loop:       true,
-          autoplay:   true,
-          animationData: animData,
+      // Listen to UI mode changes (§2: 'interface' | 'voice')
+      if (window.toji.onModeChange) {
+        window.toji.onModeChange((mode) => {
+          if (mode === 'voice') {
+            document.body.classList.add('mode-voice');
+          } else {
+            document.body.classList.remove('mode-voice');
+          }
         });
-      } catch (err) {
-        console.warn('[Avatar] Lottie load failed, falling back to CSS only:', err);
-        // Fallback: render a plain amber orb via CSS
-        const el = document.getElementById('lottie-container');
-        el.innerHTML = `
-          <div style="
-            width:80px;height:80px;border-radius:50%;
-            background:radial-gradient(circle at 35% 35%, #FCD34D, #D97706 60%, #92400E);
-            box-shadow:0 0 24px rgba(217,119,6,0.5);
-            margin:10px auto;
-            animation:glow-pulse 3s ease-in-out infinite;
-          "></div>`;
+      }
+
+      // Initial mode query
+      if (window.toji.getMode) {
+        window.toji.getMode().then((mode) => {
+          if (mode === 'voice') document.body.classList.add('mode-voice');
+        }).catch(() => {});
       }
     }
 
-    loadLottie();
-
-    // ── IPC: receive state changes from main process ─────────────────────────
-    if (window.toji) {
-      window.toji.onAvatarState((state) => {
-        // Remove all state classes, add new one
-        document.body.className = `state-${state}`;
-
-        // Change lottie speed / direction based on state
-        if (!anim) return;
-        switch (state) {
-          case 'idle':
-            anim.setSpeed(1);
-            anim.play();
-            break;
-          case 'thinking':
-            anim.setSpeed(2.5);
-            anim.play();
-            break;
-          case 'speaking':
-            anim.setSpeed(1.8);
-            anim.play();
-            break;
-          case 'error':
-            anim.setSpeed(0.5);
-            anim.play();
-            break;
-        }
-      });
-    }
-
-    // ── Click to summon / toggle chat overlay ─────────────────────────────
-    let clickStartX = 0, clickStartY = 0;
+    // ── Click to summon / toggle chat overlay ───────────────────────────────
+    let startX = 0, startY = 0;
     const wrap = document.getElementById('avatar-wrap');
+
     wrap.addEventListener('mousedown', (e) => {
-      clickStartX = e.screenX;
-      clickStartY = e.screenY;
+      startX = e.screenX;
+      startY = e.screenY;
     });
+
     wrap.addEventListener('mouseup', (e) => {
-      const dist = Math.hypot(e.screenX - clickStartX, e.screenY - clickStartY);
+      const dist = Math.hypot(e.screenX - startX, e.screenY - startY);
       if (dist < 6) {
+        // If in needs-you state, clicking summons the dashboard directly
         window.toji?.toggleOverlay();
       }
     });

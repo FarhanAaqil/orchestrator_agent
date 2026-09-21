@@ -134,3 +134,27 @@ def test_delete_conversation_cascades(client_with_clean_db):
     # Confirm 404
     get_res = client_with_clean_db.get(f"/conversations/{cid}")
     assert get_res.status_code == 404
+
+
+def test_dispatch_stream_endpoint(client_with_clean_db):
+    """POST /dispatch/stream should stream SSE events (meta, token, done) (§5c)."""
+    res = client_with_clean_db.post(
+        "/dispatch/stream",
+        json={"command": "Hello Toji streaming test", "conversation_id": "stream-chat-1"},
+    )
+    assert res.status_code == 200
+    assert "text/event-stream" in res.headers["content-type"]
+    text = res.text
+    assert "event: meta" in text
+    assert "event: token" in text
+    assert "event: done" in text
+    assert "general_chat_agent" in text
+
+    # Verify messages saved to SQLite
+    msg_res = client_with_clean_db.get("/conversations/stream-chat-1/messages")
+    assert msg_res.status_code == 200
+    messages = msg_res.json()
+    assert len(messages) == 2
+    assert messages[0]["role"] == "user"
+    assert messages[1]["role"] == "assistant"
+

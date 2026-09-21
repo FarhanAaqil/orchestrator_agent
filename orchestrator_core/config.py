@@ -33,6 +33,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    def model_post_init(self, __context) -> None:
+        import os
+        if os.path.exists("/app/data") and self.database_path == "database/orchestrator.db":
+            self.database_path = "/app/data/orchestrator.db"
+        if os.path.exists("/app/data") and self.chroma_db_dir == "chroma_db":
+            self.chroma_db_dir = "/app/data/chroma_db"
+
 
 @lru_cache()
 def get_settings() -> Settings:

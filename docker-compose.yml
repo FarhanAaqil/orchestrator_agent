@@ -1,36 +1,23 @@
-version: '3.8'
-
 services:
-  # ── Backend Orchestrator API Service ─────────────────────────────────────────
-  orchestrator:
+  orchestrator_core:
     build: .
-    container_name: aaqil_orchestrator
-    expose:
-      - "8000"
-    ports:
-      # Optional direct debug binding to localhost only
-      - "127.0.0.1:8000:8000"
-    volumes:
-      - ./.env:/app/.env
-      - ./database:/app/database
-      - ./chroma_db:/app/chroma_db
+    container_name: toji_orchestrator_core
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: .env
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1.5G
+    volumes:
+      - orchestrator_data:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
-      interval: 15s
-      timeout: 5s
+      interval: 10s
+      timeout: 3s
       retries: 3
 
-  # ── Nginx Load Balancer & Reverse Proxy ───────────────────────────────────────
-  nginx:
-    image: nginx:alpine
-    container_name: aaqil_nginx_proxy
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      orchestrator:
-        condition: service_healthy
-    restart: unless-stopped
-
+volumes:
+  orchestrator_data:

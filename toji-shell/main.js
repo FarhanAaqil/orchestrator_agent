@@ -61,20 +61,38 @@ app.whenReady().then(async () => {
     }
   }
 
-  // Start the FastAPI sidecar
-  await sidecar.spawn({ dev: IS_DEV });
-
-  // Build overlay + avatar windows
+  // Build overlay + avatar windows first so avatar can reflect startup states
   const wm = new WindowManager({ dev: IS_DEV });
   wm.createOverlay();
   wm.createAvatar();
-  wm.show(); // Immediately summon to screen on start!
+
+  // Load UI configuration mode (§2)
+  const configManager = require('./config-manager');
+  wm.setMode(configManager.getMode());
+
+  // Start the FastAPI sidecar with startup feedback
+  await sidecar.spawn({
+    dev: IS_DEV,
+    onStarting: () => wm.setAvatarState('starting'),
+  });
+
+  // If in interface mode, show overlay; if in voice mode, keep overlay hidden
+  if (configManager.getMode() === 'interface') {
+    wm.show();
+  }
 
   // Create tray AFTER windows exist (Windows 11 requirement)
   const tray = new TrayManager(wm);
   tray.init();
 
-  // ── Global hotkey ── Alt+T to toggle the overlay
+  // React to config mode changes without app restart
+  configManager.onConfigChange((cfg) => {
+    wm.setMode(cfg.mode);
+    tray.refresh();
+  });
+
+  // ── Global hotkeys ──────────────────────────────────────────────────────────
+  // Alt+T to toggle overlay (supports mixed use in voice mode per §2)
   const HOTKEY = 'Alt+T';
   const registered = globalShortcut.register(HOTKEY, () => {
     wm.toggle();
@@ -83,6 +101,18 @@ app.whenReady().then(async () => {
     console.warn('[Toji] Could not register hotkey', HOTKEY);
   } else {
     console.log('[Toji] Hotkey registered:', HOTKEY);
+  }
+
+  // Ctrl+Shift+V to toggle Interface vs Voice-only modes (§2)
+  const MODE_HOTKEY = 'CommandOrControl+Shift+V';
+  const modeRegistered = globalShortcut.register(MODE_HOTKEY, () => {
+    const newMode = configManager.toggleMode();
+    console.log('[Toji] Mode toggled via hotkey to:', newMode);
+  });
+  if (!modeRegistered) {
+    console.warn('[Toji] Could not register mode hotkey', MODE_HOTKEY);
+  } else {
+    console.log('[Toji] Mode hotkey registered:', MODE_HOTKEY);
   }
 
   // macOS: re-create window when dock icon clicked
@@ -125,12 +155,22 @@ ipcMain.on('toji:toggle-overlay', () => {
 
 ipcMain.on('toji:avatar-state', (_event, state) => {
   const wm = WindowManager.getInstance();
-  if (wm) wm.setAvatarState(state); // 'idle' | 'thinking' | 'speaking'
+  if (wm) wm.setAvatarState(state);
 });
 
 ipcMain.on('toji:toggle-voice', () => {
   const wm = WindowManager.getInstance();
   if (wm) wm.toggleVoice();
+});
+
+ipcMain.handle('toji:get-mode', () => {
+  const configManager = require('./config-manager');
+  return configManager.getMode();
+});
+
+ipcMain.on('toji:set-mode', (_event, mode) => {
+  const configManager = require('./config-manager');
+  configManager.setMode(mode);
 });
 
 ipcMain.handle('toji:get-api-base', () => {
