@@ -37,7 +37,7 @@ COPY --chown=appuser:appgroup database/ /app/database/
 COPY --chown=appuser:appgroup frontend/ /app/frontend/
 
 # Create database and runtime directories with correct permissions
-RUN mkdir -p /app/database && chown -R appuser:appgroup /app
+RUN mkdir -p /app/database /app/data && chown -R appuser:appgroup /app
 
 USER appuser
 

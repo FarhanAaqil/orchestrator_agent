@@ -277,9 +277,25 @@ class WindowManager {
     }
   }
 
-  // ── Avatar state ─────────────────────────────────────────────────────────────
+  // ── Mode Management (§2) ──────────────────────────────────────────────────
+  setMode(mode) {
+    this._mode = mode;
+    if (mode === 'voice') {
+      // Voice mode: keep overlay window hidden to save GPU/CPU cycles
+      this.hide();
+      this._avatar?.webContents.send('avatar:set-mode', 'voice');
+    } else {
+      this._avatar?.webContents.send('avatar:set-mode', 'interface');
+    }
+  }
+
+  getMode() {
+    return this._mode || 'interface';
+  }
+
+  // ── Avatar state (§3, §4) ──────────────────────────────────────────────────
   setAvatarState(state) {
-    // 'idle' | 'thinking' | 'speaking' | 'error'
+    // 'idle' | 'thinking' | 'speaking' | 'needs-you' | 'found-something' | 'starting' | 'error'
     this._avatar?.webContents.send('avatar:set-state', state);
   }
 

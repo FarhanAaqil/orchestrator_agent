@@ -1,47 +1,45 @@
 /**
  * toji-shell/sidecar.js
  *
- * Manages the FastAPI backend (uvicorn) as a child process.
- *
- * Dev mode   → spawns `uvicorn orchestrator_core.main:app ...`
- * Packaged   → spawns `./resources/toji-backend.exe` (PyInstaller bundle)
- *
- * Exposes:
- *   spawn(opts)    → start the sidecar, resolve when /health is 200
- *   kill()         → send SIGTERM, wait for exit
- *   getStatus()    → 'starting' | 'ready' | 'error' | 'dead'
- *   getApiBase()   → 'http://127.0.0.1:8000'
+ * Deep Spec (§1) Always-on backend manager:
+ *   1. GET localhost:8000/health with 1.5s fast timeout.
+ *   2. If healthy → ready immediately (sub-100ms launch).
+ *   3. If unhealthy → execute `docker compose up -d` as fallback
+ *      (with dev uvicorn / local exe fallback).
+ *   4. Poll health check every 500ms up to 10s.
  */
 
 'use strict';
 
-const { spawn: spawnProc } = require('child_process');
+const { spawn: spawnProc, exec } = require('child_process');
 const path = require('path');
 const fs   = require('fs');
 const http = require('http');
-const { app } = require('electron');
 
-const HOST    = '127.0.0.1';
-const PORT    = 8000;
+const HOST     = '127.0.0.1';
+const PORT     = 8000;
 const API_BASE = `http://${HOST}:${PORT}`;
 
 let _proc   = null;
 let _status = 'idle'; // idle | starting | ready | error | dead
 
-// ── Quick port check ──────────────────────────────────────────────────────────
-function isPortListening() {
+// ── Quick port check (1.5s timeout per §1) ───────────────────────────────────
+function isPortListening(timeoutMs = 1500) {
   return new Promise((resolve) => {
     const req = http.get(`${API_BASE}/health`, (res) => {
       resolve(res.statusCode === 200);
       res.resume();
     });
-    req.setTimeout(600, () => { req.destroy(); resolve(false); });
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      resolve(false);
+    });
     req.on('error', () => resolve(false));
   });
 }
 
-// ── Health poll ───────────────────────────────────────────────────────────────
-function pollHealth({ intervalMs = 700, timeoutMs = 45_000 } = {}) {
+// ── Health poll (500ms interval up to 10s per §1) ─────────────────────────────
+function pollHealth({ intervalMs = 500, timeoutMs = 10_000 } = {}) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     const check = () => {
@@ -49,93 +47,124 @@ function pollHealth({ intervalMs = 700, timeoutMs = 45_000 } = {}) {
         if (res.statusCode === 200) {
           resolve();
         } else if (Date.now() > deadline) {
-          reject(new Error(`Sidecar health check timed out after ${timeoutMs}ms`));
+          reject(new Error(`Backend did not become healthy within ${timeoutMs}ms`));
         } else {
           setTimeout(check, intervalMs);
         }
         res.resume();
       }).on('error', () => {
         if (Date.now() > deadline) {
-          reject(new Error(`Sidecar health check timed out after ${timeoutMs}ms`));
+          reject(new Error(`Backend did not become healthy within ${timeoutMs}ms`));
         } else {
           setTimeout(check, intervalMs);
         }
       });
     };
-    setTimeout(check, 300);
+    setTimeout(check, 200);
   });
 }
 
-// ── Spawn ─────────────────────────────────────────────────────────────────────
-async function spawn({ dev = true } = {}) {
+// ── Execute Docker Compose fallback ──────────────────────────────────────────
+function tryDockerComposeUp(projectRoot) {
+  return new Promise((resolve) => {
+    // Try 'docker compose up -d' first, fallback to 'docker-compose up -d'
+    const cmd = 'docker compose up -d';
+    console.log('[Toji sidecar] Attempting fallback:', cmd);
+    exec(cmd, { cwd: projectRoot, timeout: 8000 }, (err, stdout, stderr) => {
+      if (!err) {
+        console.log('[Toji sidecar] Docker compose up succeeded:', stdout.trim());
+        resolve(true);
+      } else {
+        console.warn('[Toji sidecar] docker compose failed, trying docker-compose:', err.message);
+        exec('docker-compose up -d', { cwd: projectRoot, timeout: 8000 }, (err2) => {
+          if (!err2) {
+            console.log('[Toji sidecar] docker-compose up succeeded');
+            resolve(true);
+          } else {
+            console.warn('[Toji sidecar] Docker not available or compose failed:', err2.message);
+            resolve(false);
+          }
+        });
+      }
+    });
+  });
+}
+
+// ── Spawn / Startup Chain ────────────────────────────────────────────────────
+async function spawn({ dev = true, onStarting = null } = {}) {
   _status = 'starting';
 
-  // If the backend is already running (manual dev start), skip spawning
-  const alreadyUp = await isPortListening();
-  if (alreadyUp) {
-    console.log('[Toji sidecar] Backend already on port', PORT, '— skipping spawn');
+  // Step 1: 1.5s fast health check
+  const warm = await isPortListening(1500);
+  if (warm) {
+    console.log('[Toji sidecar] Backend already warm & listening on', PORT);
     _status = 'ready';
     return;
   }
 
-  // Resolve the working directory (project root, one level up from toji-shell/)
-  const projectRoot = path.resolve(__dirname, '..');
-
-  let cmd, args, opts;
-
-  if (dev) {
-    // Dev: use the system Python/uvicorn in the project root
-    cmd  = process.platform === 'win32' ? 'uvicorn' : 'uvicorn';
-    args = [
-      'orchestrator_core.main:app',
-      '--host', HOST,
-      '--port', String(PORT),
-      '--log-level', 'warning',
-    ];
-    opts = {
-      cwd: projectRoot,
-      env: { ...process.env },
-      shell: true,           // needed on Windows to find uvicorn on PATH
-      windowsHide: true,     // don't flash a console window on Windows
-    };
-  } else {
-    // Packaged: use the bundled sidecar executable
-    const exeName = process.platform === 'win32' ? 'toji-backend.exe' : 'toji-backend';
-    const exePath = path.join(process.resourcesPath, exeName);
-    if (!fs.existsSync(exePath)) {
-      _status = 'error';
-      throw new Error(`Packaged sidecar not found at ${exePath}`);
-    }
-    cmd  = exePath;
-    args = [];
-    opts = { windowsHide: true };
+  // Notify avatar to show "starting up..." state
+  if (typeof onStarting === 'function') {
+    onStarting();
   }
 
-  console.log('[Toji sidecar] Spawning:', cmd, args.join(' '));
-  _proc = spawnProc(cmd, args, opts);
+  const projectRoot = path.resolve(__dirname, '..');
 
-  _proc.stdout?.on('data', (d) => console.log('[sidecar]', d.toString().trimEnd()));
-  _proc.stderr?.on('data', (d) => console.error('[sidecar]', d.toString().trimEnd()));
+  // Step 2: Try Docker Compose up -d fallback
+  console.log('[Toji sidecar] Backend cold — attempting Docker startup fallback...');
+  const dockerStarted = await tryDockerComposeUp(projectRoot);
 
-  _proc.on('exit', (code, signal) => {
-    console.warn(`[Toji sidecar] Exited — code=${code} signal=${signal}`);
-    _status = 'dead';
-  });
+  if (!dockerStarted) {
+    // Step 3: Local process fallback (dev uvicorn or packaged exe)
+    console.log('[Toji sidecar] Starting local backend process fallback...');
+    let cmd, args, opts;
 
-  _proc.on('error', (err) => {
-    console.error('[Toji sidecar] Spawn error:', err.message);
-    _status = 'error';
-  });
+    if (dev) {
+      cmd  = 'uvicorn';
+      args = [
+        'orchestrator_core.main:app',
+        '--host', HOST,
+        '--port', String(PORT),
+        '--log-level', 'warning',
+      ];
+      opts = {
+        cwd: projectRoot,
+        env: { ...process.env },
+        shell: true,
+        windowsHide: true,
+      };
+    } else {
+      const exeName = process.platform === 'win32' ? 'toji-backend.exe' : 'toji-backend';
+      const exePath = path.join(process.resourcesPath, exeName);
+      if (!fs.existsSync(exePath)) {
+        _status = 'error';
+        throw new Error(`Packaged sidecar not found at ${exePath}`);
+      }
+      cmd  = exePath;
+      args = [];
+      opts = { windowsHide: true };
+    }
 
-  // Wait for the backend to be responsive
+    _proc = spawnProc(cmd, args, opts);
+    _proc.stdout?.on('data', (d) => console.log('[sidecar]', d.toString().trimEnd()));
+    _proc.stderr?.on('data', (d) => console.error('[sidecar]', d.toString().trimEnd()));
+    _proc.on('exit', (code, signal) => {
+      console.warn(`[Toji sidecar] Exited — code=${code} signal=${signal}`);
+      _status = 'dead';
+    });
+    _proc.on('error', (err) => {
+      console.error('[Toji sidecar] Spawn error:', err.message);
+      _status = 'error';
+    });
+  }
+
+  // Step 4: Poll health every 500ms up to 10s
   try {
-    await pollHealth({ timeoutMs: 30_000 });
+    await pollHealth({ intervalMs: 500, timeoutMs: 10_000 });
     _status = 'ready';
     console.log('[Toji sidecar] Ready at', API_BASE);
   } catch (err) {
     _status = 'error';
-    console.error('[Toji sidecar] Health check failed:', err.message);
-    // Don't throw — app can still launch with a degraded banner
+    console.error('[Toji sidecar] Startup timeout:', err.message);
   }
 }
 
@@ -147,7 +176,6 @@ function kill() {
     _proc.on('exit', () => resolve());
     _proc.kill('SIGTERM');
 
-    // Force-kill after 3s if still alive
     setTimeout(() => {
       try { _proc?.kill('SIGKILL'); } catch {}
       resolve();
@@ -155,7 +183,6 @@ function kill() {
   });
 }
 
-// ── Getters ───────────────────────────────────────────────────────────────────
 function getStatus()  { return _status; }
 function getApiBase() { return API_BASE; }
 

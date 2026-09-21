@@ -65,6 +65,37 @@ def _call_llm(prompt: str, context_history: Optional[str] = None) -> str:
         )
 
 
+def stream_llm(prompt: str, context_history: Optional[str] = None):
+    """Execute Groq LLM streaming completion yielding token text deltas (§5c)."""
+    settings = get_settings()
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        messages = [{"role": "system", "content": _TOJI_PROMPT}]
+        if context_history:
+            messages.append({"role": "system", "content": f"Prior Conversation Context:\n{context_history}"})
+        messages.append({"role": "user", "content": prompt})
+
+        stream = client.chat.completions.create(
+            model=settings.router_model,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=2048,
+            stream=True,
+        )
+        for chunk in stream:
+            content = chunk.choices[0].delta.content or ""
+            if content:
+                yield content
+    except Exception as exc:
+        logger.warning("[general_chat_agent] Groq streaming call failed (%s) — using fallback.", exc)
+        fallback = (
+            "Greetings. I am Toji, Farhan Aaqil's orchestration companion. All systems are operational.\n\n"
+            "Tell me what you need executed — technical research, code architecture, career strategy, email outreach, GitHub operations, or content publishing."
+        )
+        for word in fallback.split(" "):
+            yield word + " "
+
+
 def handle(command: str, metadata: Optional[dict[str, Any]] = None) -> AgentResult:
     """
     Entry point for the General Chat Agent.

@@ -267,6 +267,63 @@
         }
         return res.json();
       },
+      dispatchStream: async (command, conversationId = null, callbacks = {}) => {
+        const payload = { command, context: {} };
+        if (conversationId) payload.conversation_id = conversationId;
+        const res = await fetch('/dispatch/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.status === 422) {
+          const err = await res.json();
+          throw { isClarification: true, ...err };
+        }
+        if (res.status === 503) {
+          const err = await res.json();
+          throw { isCircuitOpen: true, ...err };
+        }
+        if (!res.ok) {
+          let errText = res.statusText;
+          try { const j = await res.json(); errText = j.detail || errText; } catch {}
+          throw new Error(`HTTP ${res.status}: ${errText}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          let currentEvent = null;
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith('data: ') && currentEvent) {
+              const dataStr = line.slice(6).trim();
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (currentEvent === 'meta') callbacks.onMeta?.(parsed);
+                else if (currentEvent === 'token') callbacks.onToken?.(parsed.token);
+                else if (currentEvent === 'done') callbacks.onDone?.(parsed);
+                else if (currentEvent === 'clarification') {
+                  throw { isClarification: true, ...parsed };
+                } else if (currentEvent === 'error') {
+                  throw new Error(parsed.detail || parsed.error);
+                }
+              } catch (e) {
+                if (e.isClarification) throw e;
+              }
+              currentEvent = null;
+            }
+          }
+        }
+      },
       getAgents: async () => {
         const res = await fetch('/agents');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -571,40 +628,49 @@
 
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const userMsgId = Date.now();
+        const assistantMsgId = Date.now() + 1;
 
-        // Append User message to stream
+        // Append User message and placeholder assistant message for streaming
         setMessages(prev => [
           ...prev,
-          { id: userMsgId, role: "user", text: cmdToRun, time: nowTime }
+          { id: userMsgId, role: "user", text: cmdToRun, time: nowTime },
+          {
+            id: assistantMsgId,
+            role: "assistant",
+            agent: "router",
+            text: "",
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
         ]);
 
+        let streamOutput = "";
         try {
-          const data = await api.dispatch(cmdToRun, conversationId);
-          const assistantMsgId = Date.now() + 1;
-
-          setMessages(prev => [
-            ...prev,
-            {
-              id: assistantMsgId,
-              role: "assistant",
-              agent: data.agent,
-              text: data.output,
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          await api.dispatchStream(cmdToRun, conversationId, {
+            onMeta: (meta) => {
+              setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, agent: meta.agent } : m));
+            },
+            onToken: (token) => {
+              streamOutput += token;
+              if (window.toji?.setAvatarState) window.toji.setAvatarState('speaking');
+              setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, text: streamOutput } : m));
+            },
+            onDone: (data) => {
+              if (voiceOutput && streamOutput) {
+                speakText(streamOutput);
+              } else if (window.toji?.setAvatarState) {
+                window.toji.setAvatarState('idle');
+              }
+              if (data.conversation_id) {
+                setConversationId(data.conversation_id);
+              }
+              loadConversations();
             }
-          ]);
-
-          if (voiceOutput) {
-            speakText(data.output);
-          } else if (window.toji?.setAvatarState) {
-            window.toji.setAvatarState('speaking');
-            setTimeout(() => window.toji?.setAvatarState('idle'), 3500);
-          }
-
-          if (data.metadata && data.metadata.conversation_id) {
-            setConversationId(data.metadata.conversation_id);
-          }
-          loadConversations();
+          });
         } catch (err) {
+          // If error happened before any tokens arrived, remove empty assistant placeholder
+          if (!streamOutput) {
+            setMessages(prev => prev.filter(m => m.id !== assistantMsgId));
+          }
           if (window.toji?.setAvatarState) {
             window.toji.setAvatarState('error');
             setTimeout(() => window.toji?.setAvatarState('idle'), 3500);
@@ -614,7 +680,7 @@
             setMessages(prev => [
               ...prev,
               {
-                id: Date.now() + 1,
+                id: Date.now() + 2,
                 role: "clarification",
                 reasoning: err.reasoning || err.detail,
                 candidates: err.candidates || [],
@@ -1754,7 +1820,13 @@
         const poll = async () => {
           try {
             const data = await api.getApprovals('pending');
-            setPendingCount(data.total || 0);
+            const pending = data.total || 0;
+            setPendingCount(pending);
+            if (window.toji?.setAvatarState) {
+              if (pending > 0) {
+                window.toji.setAvatarState('needs-you');
+              }
+            }
           } catch {}
           try {
             const c = await api.getCircuit();
