@@ -209,11 +209,11 @@ class WindowManager {
       },
     });
 
-    this._avatar.setAlwaysOnTop(true, 'screen-saver');
     this._avatar.loadFile(path.join(__dirname, 'assets', 'avatar.html'));
 
     this._avatar.once('ready-to-show', () => {
       this._avatar?.show();
+      this._avatar?.setAlwaysOnTop(true);
       this._avatar?.moveTop();
     });
 
