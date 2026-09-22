@@ -1,22 +1,20 @@
 /**
  * toji-shell/window-manager.js
  *
- * Creates and manages the two Electron windows:
+ * Creates and manages the Electron windows:
  *
- *  1. Overlay  — the full chat interface (frameless, always-on-top, 460×720)
- *               Loads http://127.0.0.1:8000/ from the sidecar.
- *               Injects a drag handle so the frameless window is movable.
+ *  1. Dashboard — Orchestrator Agent Executive Control Panel (1280×850)
+ *                 The primary command center loading http://127.0.0.1:8000/
  *
- *  2. Avatar   — small 120×120 Lottie animation window (always-on-top, draggable)
- *               Positioned to the top-left of the overlay.
- *               Receives 'avatar-state' IPC messages to change animation.
+ *  2. Overlay   — Compact companion chat interface (frameless, always-on-top, 460×720)
+ *                 Loads local assets/chat.html for rapid (<15ms) prompts.
  *
  * WindowManager is a singleton — main.js holds the one instance.
  */
 
 'use strict';
 
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');
 
 const API_BASE = 'http://127.0.0.1:8000';
@@ -25,17 +23,12 @@ const API_BASE = 'http://127.0.0.1:8000';
 const OW = 460;
 const OH = 720;
 
-// Avatar dimensions
-const AW = 120;
-const AH = 120;
-
 let _instance = null; // singleton reference
 
 class WindowManager {
   constructor({ dev = false } = {}) {
     this._dev            = dev;
     this._overlay        = null;
-    this._avatar         = null;
     this._dashboard      = null;
     this._visible        = false;
     this._overlayVisible = false;
@@ -44,13 +37,76 @@ class WindowManager {
 
   static getInstance() { return _instance; }
 
-  // ── Overlay ─────────────────────────────────────────────────────────────────
+  // ── Executive Control Panel Window (Primary Command Center) ──────────────────
+  createDashboard() {
+    if (this._dashboard && !this._dashboard.isDestroyed()) {
+      if (this._dashboard.isMinimized()) this._dashboard.restore();
+      this._dashboard.show();
+      this._dashboard.focus();
+      return this._dashboard;
+    }
+
+    const { workArea } = screen.getPrimaryDisplay();
+    const dw = Math.min(1360, workArea.width - 40);
+    const dh = Math.min(880, workArea.height - 40);
+
+    const iconPath = path.join(__dirname, 'assets', 'toji-tray.ico');
+
+    this._dashboard = new BrowserWindow({
+      width:           dw,
+      height:          dh,
+      minWidth:        960,
+      minHeight:       640,
+      title:           'Orchestrator Agent — Executive Control Panel',
+      backgroundColor: '#B0B8C4',
+      icon:            iconPath,
+      autoHideMenuBar: true,
+      show:            false,
+      webPreferences: {
+        preload:          path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration:  false,
+        sandbox:          true,
+        webSecurity:      true,
+      },
+    });
+
+    this._dashboard.loadURL(API_BASE);
+
+    this._dashboard.once('ready-to-show', () => {
+      this._dashboard?.show();
+      this._dashboard?.focus();
+    });
+
+    this._dashboard.webContents.setWindowOpenHandler(({ url }) => {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    });
+
+    this._dashboard.on('closed', () => {
+      this._dashboard = null;
+    });
+
+    return this._dashboard;
+  }
+
+  showControlPanel() {
+    return this.createDashboard();
+  }
+
+  // ── Compact Chat Overlay ───────────────────────────────────────────────────
   createOverlay() {
+    if (this._overlay && !this._overlay.isDestroyed()) {
+      return this._overlay;
+    }
+
     const { workArea } = screen.getPrimaryDisplay();
 
-    // Bottom-right of the primary display
-    const x = workArea.x + workArea.width  - OW - 20;
-    const y = workArea.y + workArea.height - OH - 20;
+    // Position in bottom-right corner with 24px padding
+    const x = workArea.x + workArea.width  - OW - 24;
+    const y = workArea.y + workArea.height - OH - 24;
+
+    const iconPath = path.join(__dirname, 'assets', 'toji-tray.ico');
 
     this._overlay = new BrowserWindow({
       width:           OW,
@@ -66,6 +122,7 @@ class WindowManager {
       maximizable:     false,
       hasShadow:       true,
       show:            false,
+      icon:            iconPath,
       backgroundColor: '#00000000',
       webPreferences: {
         preload:          path.join(__dirname, 'preload.js'),
@@ -76,7 +133,7 @@ class WindowManager {
       },
     });
 
-    // Step 1: Load instant, zero-CDN local companion chat UI (<15ms)
+    // Load instant, zero-CDN local companion chat UI (<15ms)
     const chatPath = path.join(__dirname, 'assets', 'chat.html');
     this._overlay.loadFile(chatPath);
 
@@ -89,51 +146,19 @@ class WindowManager {
 
     // Open external links in default browser
     this._overlay.webContents.setWindowOpenHandler(({ url }) => {
-      const { shell } = require('electron');
       shell.openExternal(url);
       return { action: 'deny' };
     });
 
-    // Reposition avatar when overlay window moves
-    this._overlay.on('move', () => {
-      this._repositionAvatar();
+    this._overlay.on('closed', () => {
+      this._overlay = null;
+      this._overlayVisible = false;
     });
 
-    this._overlay.on('closed', () => { this._overlay = null; });
+    return this._overlay;
   }
 
-  // ── Full Dashboard Window ───────────────────────────────────────────────────
-  createDashboard() {
-    if (this._dashboard && !this._dashboard.isDestroyed()) {
-      this._dashboard.show();
-      this._dashboard.focus();
-      return;
-    }
-
-    this._dashboard = new BrowserWindow({
-      width:           1280,
-      height:          850,
-      minWidth:        900,
-      minHeight:       600,
-      title:           'Toji — Executive Control Plane',
-      backgroundColor: '#B0B8C4',
-      autoHideMenuBar: true,
-      webPreferences: {
-        preload:          path.join(__dirname, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration:  false,
-        sandbox:          true,
-        webSecurity:      true,
-      },
-    });
-
-    this._dashboard.loadURL(API_BASE);
-
-    this._dashboard.on('closed', () => {
-      this._dashboard = null;
-    });
-  }
-
+  // ── Voice Mode Toggle ────────────────────────────────────────────────────────
   toggleVoice() {
     if (this._overlay && !this._overlay.isDestroyed()) {
       this._overlay.webContents.send('toji:voice-toggle');
@@ -143,51 +168,18 @@ class WindowManager {
     }
   }
 
-  /** Notify overlay that backend sidecar is ready */
+  /** Notify windows that backend sidecar is ready */
   notifyBackendReady() {
     if (this._overlay && !this._overlay.isDestroyed()) {
       this._overlay.webContents.send('toji:backend-ready');
     }
-  }
-
-  // ── Avatar (Desktop Pet) ─────────────────────────────────────────────────────
-  createAvatar() {
-    const { workArea } = screen.getPrimaryDisplay();
-
-    // Default desktop pet position: bottom-right corner, 24px padding from taskbar/edge
-    const ax = workArea.x + workArea.width - AW - 24;
-    const ay = workArea.y + workArea.height - AH - 24;
-
-    this._avatar = new BrowserWindow({
-      width:           AW,
-      height:          AH,
-      x:               ax,
-      y:               ay,
-      frame:           false,
-      transparent:     true,
-      alwaysOnTop:     true,
-      skipTaskbar:     true,
-      resizable:       false,
-      hasShadow:       false,
-      show:            true, // Visible on screen as a desktop pet!
-      backgroundColor: '#00000000',
-      webPreferences: {
-        preload:          path.join(__dirname, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration:  false,
-        sandbox:          true,
-      },
-    });
-
-    this._avatar.loadFile(path.join(__dirname, 'assets', 'avatar.html'));
-
-    this._avatar.once('ready-to-show', () => {
-      this._avatar?.show();
-      this._avatar?.setAlwaysOnTop(true);
-      this._avatar?.moveTop();
-    });
-
-    this._avatar.on('closed', () => { this._avatar = null; });
+    if (this._dashboard && !this._dashboard.isDestroyed()) {
+      // If dashboard failed to load previously because backend was cold, reload it
+      const currentURL = this._dashboard.webContents.getURL();
+      if (!currentURL || currentURL.startsWith('chrome-error://') || currentURL === 'about:blank') {
+        this._dashboard.loadURL(API_BASE);
+      }
+    }
   }
 
   // ── Toggle / Show / Hide ─────────────────────────────────────────────────────
@@ -200,27 +192,20 @@ class WindowManager {
   }
 
   show() {
+    if (!this._overlay || this._overlay.isDestroyed()) {
+      this.createOverlay();
+    }
     if (this._overlay) {
-      // Position overlay neatly to the left of the desktop pet
-      if (this._avatar && !this._avatar.isDestroyed()) {
-        const [ax, ay] = this._avatar.getPosition();
-        const { workArea } = screen.getPrimaryDisplay();
-        let ox = ax - OW - 16;
-        let oy = Math.min(ay, workArea.y + workArea.height - OH - 16);
-        if (ox < workArea.x) ox = ax + AW + 16;
-        this._overlay.setPosition(ox, Math.max(workArea.y + 16, oy));
-      }
+      const { workArea } = screen.getPrimaryDisplay();
+      const ox = workArea.x + workArea.width - OW - 24;
+      const oy = workArea.y + workArea.height - OH - 24;
+      this._overlay.setPosition(ox, oy);
+
       this._overlay.show();
       this._overlay.setAlwaysOnTop(true);
       this._overlay.moveTop();
       this._overlay.focus();
       this._overlay.webContents.send('toji:focus-input');
-    }
-    // Pet always stays visible on screen
-    if (this._avatar && !this._avatar.isDestroyed()) {
-      this._avatar.show();
-      this._avatar.setAlwaysOnTop(true);
-      this._avatar.moveTop();
     }
     this._visible = true;
     this._overlayVisible = true;
@@ -229,107 +214,18 @@ class WindowManager {
   hide() {
     this._overlay?.hide();
     this._overlayVisible = false;
-    // Pet stays on desktop!
-    if (this._avatar && !this._avatar.isDestroyed()) {
-      this._avatar.show();
-    }
   }
 
-  togglePet() {
-    if (!this._avatar || this._avatar.isDestroyed()) {
-      this.createAvatar();
-      return;
-    }
-    if (this._avatar.isVisible()) {
-      this._avatar.hide();
-    } else {
-      this._avatar.show();
-      this._avatar.moveTop();
-    }
-  }
-
-  // ── Mode Management (§2) ──────────────────────────────────────────────────
+  // ── Mode Management ──────────────────────────────────────────────────────────
   setMode(mode) {
     this._mode = mode;
     if (mode === 'voice') {
-      // Voice mode: keep overlay window hidden to save GPU/CPU cycles
       this.hide();
-      this._avatar?.webContents.send('avatar:set-mode', 'voice');
-    } else {
-      this._avatar?.webContents.send('avatar:set-mode', 'interface');
     }
   }
 
   getMode() {
     return this._mode || 'interface';
-  }
-
-  // ── Avatar state (§3, §4) ──────────────────────────────────────────────────
-  setAvatarState(state) {
-    // 'idle' | 'thinking' | 'speaking' | 'needs-you' | 'found-something' | 'starting' | 'error'
-    this._avatar?.webContents.send('avatar:set-state', state);
-  }
-
-  // ── Internals ─────────────────────────────────────────────────────────────────
-  _repositionAvatar() {
-    if (!this._overlay || !this._avatar) return;
-    const [ox, oy] = this._overlay.getPosition();
-    this._avatar.setPosition(ox - AW - 10, oy);
-  }
-
-  /** Injects a 28px drag handle bar at the top of the overlay */
-  _injectDragHandle() {
-    if (!this._overlay?.webContents) return;
-    this._overlay.webContents.executeJavaScript(`
-      (function() {
-        if (document.getElementById('__toji_drag__')) return;
-        const bar = document.createElement('div');
-        bar.id = '__toji_drag__';
-        bar.style.cssText = [
-          'position:fixed',
-          'top:0',
-          'left:0',
-          'right:0',
-          'height:28px',
-          '-webkit-app-region:drag',
-          'z-index:2147483647',
-          'cursor:grab',
-          'background:linear-gradient(to bottom, rgba(15,23,42,0.85) 0%, transparent 100%)',
-          'border-radius:12px 12px 0 0',
-          'display:flex',
-          'align-items:center',
-          'justify-content:center',
-          'gap:4px',
-        ].join(';');
-
-        // Dots pill indicator
-        const dots = document.createElement('div');
-        dots.style.cssText = 'display:flex;gap:4px;pointer-events:none;-webkit-app-region:no-drag;';
-        for (let i = 0; i < 3; i++) {
-          const d = document.createElement('div');
-          d.style.cssText = 'width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.25)';
-          dots.appendChild(d);
-        }
-        bar.appendChild(dots);
-        document.body.appendChild(bar);
-
-        // Non-draggable for interactive elements
-        document.querySelectorAll('input,textarea,button,a,[role="button"]').forEach(el => {
-          el.style.webkitAppRegion = 'no-drag';
-        });
-      })();
-    `).catch(() => {});
-  }
-
-  /** Clips the overlay to rounded corners via CSS injection */
-  _injectBorderRadius() {
-    if (!this._overlay?.webContents) return;
-    this._overlay.webContents.insertCSS(`
-      html, body {
-        border-radius: 12px !important;
-        overflow: hidden !important;
-      }
-    `).catch(() => {});
   }
 }
 

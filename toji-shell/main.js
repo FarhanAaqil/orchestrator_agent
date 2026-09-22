@@ -71,12 +71,11 @@ app.whenReady().then(async () => {
     }
   }
 
-  // Build overlay + avatar windows first so avatar can reflect startup states
+  // Build windows
   const wm = new WindowManager({ dev: IS_DEV });
   wm.createOverlay();
-  wm.createAvatar();
 
-  // Load UI configuration mode (§2)
+  // Load UI configuration mode
   const configManager = require('./config-manager');
   wm.setMode(configManager.getMode());
 
@@ -84,10 +83,8 @@ app.whenReady().then(async () => {
   const tray = new TrayManager(wm);
   tray.init();
 
-  // If in interface mode, show overlay immediately (<50ms); if in voice mode, keep overlay hidden
-  if (configManager.getMode() === 'interface') {
-    wm.show();
-  }
+  // Open the Orchestrator Agent Executive Control Panel immediately on launch
+  wm.createDashboard();
 
   // React to config mode changes without app restart
   configManager.onConfigChange((cfg) => {
@@ -96,7 +93,7 @@ app.whenReady().then(async () => {
   });
 
   // ── Global hotkeys ──────────────────────────────────────────────────────────
-  // Alt+T to toggle overlay (supports mixed use in voice mode per §2)
+  // Alt+T to toggle compact overlay
   const HOTKEY = 'Alt+T';
   const registered = globalShortcut.register(HOTKEY, () => {
     wm.toggle();
@@ -107,7 +104,7 @@ app.whenReady().then(async () => {
     console.log('[Toji] Hotkey registered:', HOTKEY);
   }
 
-  // Ctrl+Shift+V to toggle Interface vs Voice-only modes (§2)
+  // Ctrl+Shift+V to toggle Interface vs Voice-only modes
   const MODE_HOTKEY = 'CommandOrControl+Shift+V';
   const modeRegistered = globalShortcut.register(MODE_HOTKEY, () => {
     const newMode = configManager.toggleMode();
@@ -122,11 +119,9 @@ app.whenReady().then(async () => {
   // Start the FastAPI sidecar asynchronously in background (non-blocking)
   sidecar.spawn({
     dev: IS_DEV,
-    onStarting: () => wm.setAvatarState('starting'),
   }).then(() => {
     tray.refresh();
     wm.notifyBackendReady();
-    wm.setAvatarState('idle');
   }).catch((err) => {
     console.error('[Toji main] Sidecar spawn background error:', err);
     tray.refresh();
@@ -135,16 +130,16 @@ app.whenReady().then(async () => {
   // macOS: re-create window when dock icon clicked
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      wm.createOverlay();
+      wm.createDashboard();
     }
   });
 });
 
 // ── Second instance → focus existing overlay ──────────────────────────────────
 app.on('second-instance', () => {
-  // If someone tried to open a second instance, show our overlay instead
+  // If someone tried to open a second instance, show and focus Executive Control Panel
   const wm = WindowManager.getInstance();
-  if (wm) wm.show();
+  if (wm) wm.createDashboard();
 });
 
 // ── Quit: kill sidecar, unregister hotkeys ────────────────────────────────────
@@ -173,11 +168,6 @@ ipcMain.on('toji:toggle-overlay', () => {
 ipcMain.on('toji:open-dashboard', () => {
   const wm = WindowManager.getInstance();
   if (wm) wm.createDashboard();
-});
-
-ipcMain.on('toji:avatar-state', (_event, state) => {
-  const wm = WindowManager.getInstance();
-  if (wm) wm.setAvatarState(state);
 });
 
 ipcMain.on('toji:toggle-voice', () => {

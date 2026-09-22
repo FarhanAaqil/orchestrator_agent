@@ -47,9 +47,9 @@ class TrayManager {
       this._tray.setToolTip('Toji — Alt+T to summon');
       this._buildMenu();
 
-      // Windows/Linux: left-click toggles overlay
+      // Windows/Linux: left-click opens Executive Control Panel
       this._tray.on('click', () => {
-        this._wm.toggle();
+        this._wm.createDashboard();
       });
     } catch (err) {
       console.warn('[Toji Tray] Initialization notice:', err.message);
@@ -86,10 +86,10 @@ class TrayManager {
     const status = sidecar.getStatus();
 
     const statusLabel =
-      status === 'ready'    ? '● Toji — ready'
-      : status === 'starting' ? '◌ Toji — starting…'
-      : status === 'error'    ? '✕ Toji — backend error'
-      :                          '○ Toji — idle';
+      status === 'ready'    ? '● Orchestrator Agent — ready'
+      : status === 'starting' ? '◌ Orchestrator Agent — starting…'
+      : status === 'error'    ? '✕ Orchestrator Agent — backend error'
+      :                          '○ Orchestrator Agent — idle';
 
     const menu = Menu.buildFromTemplate([
       {
@@ -98,39 +98,20 @@ class TrayManager {
       },
       { type: 'separator' },
       {
-        label: 'Open Chat Overlay (Alt+T)',
-        click: () => this._wm.show(),
-      },
-      {
-        label: 'Show / Hide Desktop Pet',
-        click: () => this._wm.togglePet(),
-      },
-      { type: 'separator' },
-      {
-        label: 'Mode: Interface (Chat + Pet)',
-        type: 'radio',
-        checked: require('./config-manager').getMode() === 'interface',
-        click: () => {
-          require('./config-manager').setMode('interface');
-          this._buildMenu();
-        },
-      },
-      {
-        label: 'Mode: Voice-Only (Low GPU/CPU)',
-        type: 'radio',
-        checked: require('./config-manager').getMode() === 'voice',
-        click: () => {
-          require('./config-manager').setMode('voice');
-          this._buildMenu();
-        },
-      },
-      { type: 'separator' },
-      {
-        label: 'Open Executive Dashboard',
+        label: 'Open Executive Control Panel',
         click: () => this._wm.createDashboard(),
       },
       {
-        label: 'Launch at Startup',
+        label: 'Open Quick Chat Overlay (Alt+T)',
+        click: () => this._wm.show(),
+      },
+      { type: 'separator' },
+      {
+        label: 'Open in Browser (http://127.0.0.1:8000)',
+        click: () => shell.openExternal('http://127.0.0.1:8000/'),
+      },
+      {
+        label: 'Launch at Windows Startup',
         type: 'checkbox',
         checked: app.getLoginItemSettings().openAtLogin,
         click: (item) => {

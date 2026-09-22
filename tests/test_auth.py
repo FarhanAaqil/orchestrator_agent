@@ -13,9 +13,10 @@ import pytest
 from fastapi.testclient import TestClient
 from orchestrator_core.main import app
 from orchestrator_core.config import Settings, get_settings
+from orchestrator_core.storage.db import get_db_connection
 
 
-def test_health_check_always_accessible_without_auth(monkeypatch):
+def test_health_check_always_accessible_without_auth():
     """GET /health must never require authentication."""
     test_settings = Settings(auth_token="super-secret-token")
     app.dependency_overrides[get_settings] = lambda: test_settings
@@ -28,10 +29,11 @@ def test_health_check_always_accessible_without_auth(monkeypatch):
         app.dependency_overrides.pop(get_settings, None)
 
 
-def test_routes_open_when_auth_token_unset(monkeypatch):
+def test_routes_open_when_auth_token_unset(db):
     """When no auth token is configured, requests proceed without 401."""
     test_settings = Settings(auth_token=None)
     app.dependency_overrides[get_settings] = lambda: test_settings
+    app.dependency_overrides[get_db_connection] = lambda: db
     try:
         client = TestClient(app)
         # Hit /approvals with no Authorization header
@@ -40,6 +42,7 @@ def test_routes_open_when_auth_token_unset(monkeypatch):
         assert res.status_code == 200
     finally:
         app.dependency_overrides.pop(get_settings, None)
+        app.dependency_overrides.pop(get_db_connection, None)
 
 
 def test_protected_route_rejects_missing_auth_when_token_set():
@@ -69,10 +72,11 @@ def test_protected_route_rejects_invalid_token():
         app.dependency_overrides.pop(get_settings, None)
 
 
-def test_protected_route_accepts_valid_token():
+def test_protected_route_accepts_valid_token(db):
     """Requests with matching bearer token succeed."""
     test_settings = Settings(auth_token="secret-production-token")
     app.dependency_overrides[get_settings] = lambda: test_settings
+    app.dependency_overrides[get_db_connection] = lambda: db
     try:
         client = TestClient(app)
         headers = {"Authorization": "Bearer secret-production-token"}
@@ -80,3 +84,5 @@ def test_protected_route_accepts_valid_token():
         assert res.status_code == 200
     finally:
         app.dependency_overrides.pop(get_settings, None)
+        app.dependency_overrides.pop(get_db_connection, None)
+
