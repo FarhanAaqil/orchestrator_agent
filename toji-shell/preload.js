@@ -57,4 +57,17 @@ contextBridge.exposeInMainWorld('toji', {
   onModeChange: (callback) => {
     ipcRenderer.on('toji:mode-changed', (_event, mode) => callback(mode));
   },
+
+  /** Open the full Executive Dashboard in a separate window */
+  openDashboard: () => ipcRenderer.send('toji:open-dashboard'),
+
+  /** Overlay window: focus prompt input when window shown */
+  onFocusInput: (callback) => {
+    ipcRenderer.on('toji:focus-input', () => callback());
+  },
+
+  /** Overlay window: notification when backend sidecar is ready */
+  onBackendReady: (callback) => {
+    ipcRenderer.on('toji:backend-ready', () => callback());
+  },
 });

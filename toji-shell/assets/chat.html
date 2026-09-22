@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toji — Desktop Operator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    :root {
+      --bg-canvas: #0B0F17;
+      --bg-surface: #111827;
+      --bg-card: #162032;
+      --bg-input: #0F172A;
+      --border-subtle: #1E293B;
+      --border-focus: #FFB162;
+      --accent: #FFB162;
+      --accent-hover: #F59E0B;
+      --accent-glow: rgba(255, 177, 98, 0.25);
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --danger: #EF4444;
+      --success: #10B981;
+      --radius: 12px;
+    }
+
+    body {
+      width: 460px;
+      height: 720px;
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 13.5px;
+      line-height: 1.5;
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 177, 98, 0.3);
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* ── Draggable Header ────────────────────────────────────────── */
+    header {
+      height: 48px;
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      -webkit-app-region: drag;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-orb {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #EAB308;
+      box-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .status-orb.ready {
+      background: #10B981;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+    }
+
+    .status-orb.streaming {
+      background: #FFB162;
+      box-shadow: 0 0 12px rgba(255, 177, 98, 0.9);
+      animation: pulse 1s infinite alternate;
+    }
+
+    .status-orb.error {
+      background: #EF4444;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+    }
+
+    @keyframes pulse {
+      from { transform: scale(0.9); opacity: 0.8; }
+      to   { transform: scale(1.25); opacity: 1; }
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-title span.tag {
+      font-size: 10px;
+      font-weight: 600;
+      background: rgba(255, 177, 98, 0.15);
+      color: var(--accent);
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 177, 98, 0.3);
+      letter-spacing: 0.04em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      -webkit-app-region: no-drag;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .icon-btn.dashboard-btn:hover {
+      color: var(--accent);
+      border-color: rgba(255, 177, 98, 0.3);
+    }
+
+    .icon-btn.close-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #F87171;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    /* ── Chat Stream ─────────────────────────────────────────────── */
+    main.chat-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      user-select: text;
+    }
+
+    main.chat-feed::-webkit-scrollbar {
+      width: 6px;
+    }
+    main.chat-feed::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    main.chat-feed::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 3px;
+    }
+    main.chat-feed::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    /* ── Welcome Greeting ────────────────────────────────────────── */
+    .welcome-card {
+      background: linear-gradient(135deg, rgba(22, 32, 50, 0.8) 0%, rgba(17, 24, 39, 0.9) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .welcome-title {
+      font-weight: 600;
+      font-size: 13.5px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .welcome-title .accent-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    .welcome-desc {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .chips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .chip-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .chip-btn:hover {
+      background: rgba(255, 177, 98, 0.1);
+      border-color: rgba(255, 177, 98, 0.35);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    /* ── Messages ────────────────────────────────────────────────── */
+    .msg-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 92%;
+    }
+
+    .msg-wrap.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .msg-wrap.assistant {
+      align-self: flex-start;
+      align-items: flex-start;
+      max-width: 96%;
+    }
+
+    .msg-meta {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .msg-meta .agent-pill {
+      color: var(--accent);
+      background: rgba(255, 177, 98, 0.12);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 10px;
+      word-break: break-word;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .msg-wrap.user .msg-bubble {
+      background: #1E293B;
+      color: #F8FAFC;
+      border: 1px solid #334155;
+      border-right: 2px solid var(--accent);
+      border-bottom-right-radius: 2px;
+    }
+
+    .msg-wrap.assistant .msg-bubble {
+      background: #111827;
+      color: #E2E8F0;
+      border: 1px solid var(--border-subtle);
+      border-bottom-left-radius: 2px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ── Markdown Content Styling ────────────────────────────────── */
+    .markdown-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .markdown-body p {
+      margin: 0;
+    }
+
+    .markdown-body strong {
+      color: #FFFFFF;
+      font-weight: 600;
+    }
+
+    .markdown-body em {
+      color: #CBD5E1;
+      font-style: italic;
+    }
+
+    .markdown-body code.inline {
+      background: #1E293B;
+      color: #FFB162;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: "JetBrains Mono", Consolas, Menlo, monospace;
+      font-size: 11.5px;
+      border: 1px solid rgba(255, 177, 98, 0.2);
+    }
+
+    .markdown-body pre {
+      background: #090D14;
+      border: 1px solid #1E293B;
+      border-radius: 6px;
+      padding: 8px 10px;
+      overflow-x: auto;
+      position: relative;
+      margin: 4px 0;
+    }
+
+    .markdown-body pre code {
+      font-family: "JetBrains Mono", Consolas, Menlo, monospace;
+      font-size: 11.5px;
+      color: #E2E8F0;
+      line-height: 1.45;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 4px;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    .markdown-body ul, .markdown-body ol {
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .markdown-body li {
+      color: #CBD5E1;
+    }
+
+    .markdown-body blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 10px;
+      color: #94A3B8;
+      font-style: italic;
+      margin: 4px 0;
+    }
+
+    .streaming-cursor {
+      display: inline-block;
+      width: 7px;
+      height: 13px;
+      background: var(--accent);
+      vertical-align: middle;
+      margin-left: 3px;
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ── Approval Box Inline ─────────────────────────────────────── */
+    .approval-card {
+      margin-top: 8px;
+      background: rgba(255, 177, 98, 0.08);
+      border: 1px solid rgba(255, 177, 98, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .approval-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-approve {
+      background: #10B981;
+      border: none;
+      color: #FFFFFF;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11.5px;
+    }
+    .btn-approve:hover { background: #059669; }
+
+    .btn-reject {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #F87171;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11.5px;
+    }
+    .btn-reject:hover { background: rgba(239, 68, 68, 0.3); }
+
+    /* ── Input Box Footer ────────────────────────────────────────── */
+    footer.chat-input-area {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-subtle);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 6px 8px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .input-row:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    textarea#prompt-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.45;
+      resize: none;
+      height: 38px;
+      max-height: 120px;
+      padding: 2px 4px;
+    }
+
+    textarea#prompt-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      color: #0B0F17;
+      font-weight: 700;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 0 10px rgba(255, 177, 98, 0.4);
+    }
+
+    .send-btn:disabled {
+      background: #334155;
+      color: #64748B;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10.5px;
+      color: var(--text-dim);
+      padding: 0 4px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-indicator.warming {
+      color: #EAB308;
+    }
+
+    .status-indicator.ready {
+      color: #10B981;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header / Drag Bar -->
+  <header>
+    <div class="brand">
+      <div id="status-orb" class="status-orb" title="Engine Status"></div>
+      <div class="brand-title">
+        TOJI
+        <span class="tag" id="mode-badge">INTERFACE</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="voice-btn" class="icon-btn" title="Toggle Voice Mode" aria-label="Toggle Voice">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+      </button>
+      <button id="dashboard-btn" class="icon-btn dashboard-btn" title="Open Executive Dashboard" aria-label="Open Dashboard">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="9" y1="21" x2="9" y2="9"></line>
+        </svg>
+      </button>
+      <button id="clear-btn" class="icon-btn" title="Clear Conversation" aria-label="Clear Conversation">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
+      <button id="close-btn" class="icon-btn close-btn" title="Hide Overlay (Esc)" aria-label="Hide Overlay">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Feed Area -->
+  <main id="chat-feed" class="chat-feed">
+    <!-- Welcome card -->
+    <div class="welcome-card" id="welcome-card">
+      <div class="welcome-title">
+        <div class="accent-dot"></div>
+        Toji Desktop Operator
+      </div>
+      <div class="welcome-desc">
+        Fast, zero-latency desktop orchestrator. Type any instruction to dispatch across background agents or execute system tasks.
+      </div>
+      <div class="chips-grid">
+        <button class="chip-btn" data-prompt="system status report">
+          <span>⚡</span> System Status
+        </button>
+        <button class="chip-btn" data-prompt="list active agents and capabilities">
+          <span>🤖</span> Active Agents
+        </button>
+        <button class="chip-btn" data-prompt="check pending approvals">
+          <span>🔒</span> Pending Approvals
+        </button>
+        <button class="chip-btn" data-prompt="show recent audit logs">
+          <span>📋</span> Recent Logs
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Input Footer -->
+  <footer class="chat-input-area">
+    <div class="input-row">
+      <textarea
+        id="prompt-input"
+        placeholder="Dispatch command to Toji... (Enter to send)"
+        rows="1"
+        autofocus
+      ></textarea>
+      <button id="send-btn" class="send-btn" title="Send (Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+    <div class="status-bar">
+      <div id="status-text" class="status-indicator warming">
+        <span>●</span> Connecting to engine...
+      </div>
+      <div>Esc to hide • Enter to send</div>
+    </div>
+  </footer>
+
+  <script>
+    'use strict';
+
+    // ── State ─────────────────────────────────────────────────────────
+    let currentConversationId = null;
+    let isStreaming = false;
+    let backendReady = false;
+    let queuedPrompt = null;
+    const API_BASE = 'http://127.0.0.1:8000';
+
+    // DOM Elements
+    const feedEl       = document.getElementById('chat-feed');
+    const inputEl      = document.getElementById('prompt-input');
+    const sendBtn      = document.getElementById('send-btn');
+    const statusOrb    = document.getElementById('status-orb');
+    const statusText   = document.getElementById('status-text');
+    const modeBadge    = document.getElementById('mode-badge');
+    const closeBtn     = document.getElementById('close-btn');
+    const dashboardBtn = document.getElementById('dashboard-btn');
+    const voiceBtn     = document.getElementById('voice-btn');
+    const clearBtn     = document.getElementById('clear-btn');
+
+    // ── Auto-focus input immediately ─────────────────────────────────
+    function focusInput() {
+      inputEl.focus();
+      inputEl.select();
+    }
+    window.addEventListener('DOMContentLoaded', focusInput);
+    window.addEventListener('focus', focusInput);
+    if (window.toji?.onFocusInput) {
+      window.toji.onFocusInput(focusInput);
+    }
+
+    // Auto-resize textarea
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+    });
+
+    // ── Backend Health Probe ─────────────────────────────────────────
+    async function checkBackendHealth() {
+      try {
+        const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(1000) });
+        if (res.ok) {
+          setBackendReady(true);
+          return true;
+        }
+      } catch {}
+      setBackendReady(false);
+      return false;
+    }
+
+    function setBackendReady(ready) {
+      backendReady = ready;
+      if (ready) {
+        statusOrb.className = isStreaming ? 'status-orb streaming' : 'status-orb ready';
+        statusText.className = 'status-indicator ready';
+        statusText.innerHTML = '<span>●</span> Engine online';
+        if (queuedPrompt) {
+          const q = queuedPrompt;
+          queuedPrompt = null;
+          dispatchPrompt(q);
+        }
+      } else {
+        statusOrb.className = 'status-orb';
+        statusText.className = 'status-indicator warming';
+        statusText.innerHTML = '<span>●</span> Warming up engine...';
+      }
+    }
+
+    // Initial probe + polling every 1.5s
+    checkBackendHealth();
+    setInterval(checkBackendHealth, 1500);
+
+    if (window.toji?.onBackendReady) {
+      window.toji.onBackendReady(() => checkBackendHealth());
+    }
+
+    // ── UI Mode Handling ─────────────────────────────────────────────
+    if (window.toji?.getMode) {
+      window.toji.getMode().then(m => {
+        if (modeBadge) modeBadge.textContent = m.toUpperCase();
+      });
+      window.toji.onModeChange((m) => {
+        if (modeBadge) modeBadge.textContent = m.toUpperCase();
+      });
+    }
+
+    // ── Quick Chips ──────────────────────────────────────────────────
+    document.querySelectorAll('.chip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const prompt = btn.getAttribute('data-prompt');
+        if (prompt) {
+          inputEl.value = prompt;
+          submitCurrentInput();
+        }
+      });
+    });
+
+    // ── Header Actions ───────────────────────────────────────────────
+    closeBtn.addEventListener('click', () => {
+      if (window.toji?.hide) window.toji.hide();
+    });
+
+    dashboardBtn.addEventListener('click', () => {
+      if (window.toji?.openDashboard) {
+        window.toji.openDashboard();
+      } else {
+        window.open(API_BASE, '_blank');
+      }
+    });
+
+    voiceBtn.addEventListener('click', () => {
+      if (window.toji?.toggleVoice) window.toji.toggleVoice();
+    });
+
+    clearBtn.addEventListener('click', () => {
+      currentConversationId = null;
+      feedEl.innerHTML = '';
+      appendWelcomeCard();
+    });
+
+    function appendWelcomeCard() {
+      const card = document.createElement('div');
+      card.className = 'welcome-card';
+      card.innerHTML = `
+        <div class="welcome-title">
+          <div class="accent-dot"></div>
+          Toji Desktop Operator
+        </div>
+        <div class="welcome-desc">
+          Ready to dispatch. Enter instructions or select a quick action below.
+        </div>
+        <div class="chips-grid">
+          <button class="chip-btn" data-prompt="system status report"><span>⚡</span> System Status</button>
+          <button class="chip-btn" data-prompt="list active agents and capabilities"><span>🤖</span> Active Agents</button>
+          <button class="chip-btn" data-prompt="check pending approvals"><span>🔒</span> Pending Approvals</button>
+          <button class="chip-btn" data-prompt="show recent audit logs"><span>📋</span> Recent Logs</button>
+        </div>
+      `;
+      feedEl.appendChild(card);
+      card.querySelectorAll('.chip-btn').forEach(b => {
+        b.addEventListener('click', () => {
+          inputEl.value = b.getAttribute('data-prompt');
+          submitCurrentInput();
+        });
+      });
+    }
+
+    // ── Markdown Parser (Lightweight, 0-CDN, Safe) ───────────────────
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderMarkdown(md) {
+      if (!md) return '';
+
+      // Preserve code fences
+      const codeBlocks = [];
+      let text = md.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+        const idx = codeBlocks.length;
+        codeBlocks.push({ lang: lang || 'code', code: code.trimEnd() });
+        return `@@@CODEBLOCK_${idx}@@@`;
+      });
+
+      // Escape all other HTML
+      text = escapeHtml(text);
+
+      // Inline code
+      text = text.replace(/`([^`]+)`/g, '<code class="inline">$1</code>');
+
+      // Bold & Italic
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+      // Headers (#, ##, ###)
+      text = text.replace(/^### (.*$)/gim, '<strong style="color:var(--accent);display:block;margin:6px 0 2px">$1</strong>');
+      text = text.replace(/^## (.*$)/gim, '<strong style="color:#FFF;font-size:14px;display:block;margin:8px 0 3px">$1</strong>');
+      text = text.replace(/^# (.*$)/gim, '<strong style="color:#FFF;font-size:15px;display:block;margin:10px 0 4px">$1</strong>');
+
+      // Blockquotes
+      text = text.replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>');
+
+      // Lists (- or *)
+      text = text.replace(/^\s*[-*]\s+(.*$)/gim, '<li>$1</li>');
+      text = text.replace(/(<li>.*<\/li>)/gms, '<ul>$1</ul>');
+
+      // Restore code blocks with Copy button
+      text = text.replace(/@@@CODEBLOCK_(\d+)@@@/g, (_match, id) => {
+        const blk = codeBlocks[Number(id)];
+        const clean = escapeHtml(blk.code);
+        return `
+          <pre>
+            <div class="code-header">
+              <span>${escapeHtml(blk.lang)}</span>
+              <button class="copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(blk.code)}'));this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
+            </div>
+            <code>${clean}</code>
+          </pre>
+        `;
+      });
+
+      // Paragraph line breaks
+      text = text.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>');
+
+      return `<div class="markdown-body">${text}</div>`;
+    }
+
+    // ── Append Message UI ────────────────────────────────────────────
+    function appendMessage(role, text = '', meta = '') {
+      const wrap = document.createElement('div');
+      wrap.className = `msg-wrap ${role}`;
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'msg-meta';
+      metaEl.innerHTML = meta || (role === 'user' ? 'YOU' : 'TOJI');
+
+      const bubbleEl = document.createElement('div');
+      bubbleEl.className = 'msg-bubble';
+      bubbleEl.innerHTML = renderMarkdown(text);
+
+      wrap.appendChild(metaEl);
+      wrap.appendChild(bubbleEl);
+      feedEl.appendChild(wrap);
+      feedEl.scrollTop = feedEl.scrollHeight;
+
+      return { wrap, metaEl, bubbleEl };
+    }
+
+    // ── Input Submission ─────────────────────────────────────────────
+    function submitCurrentInput() {
+      const text = inputEl.value.trim();
+      if (!text || isStreaming) return;
+
+      inputEl.value = '';
+      inputEl.style.height = '38px';
+
+      // Always show user bubble immediately (zero latency!)
+      appendMessage('user', text);
+
+      if (!backendReady) {
+        queuedPrompt = text;
+        statusText.innerHTML = '<span>⚡</span> Queued — sending on engine warm';
+        const placeholder = appendMessage('assistant', '_Warming engine... your message will dispatch the instant core is up._');
+        // Poll rapidly to fire prompt
+        const fastChecker = setInterval(async () => {
+          const warm = await checkBackendHealth();
+          if (warm) {
+            clearInterval(fastChecker);
+            placeholder.wrap.remove();
+          }
+        }, 200);
+        return;
+      }
+
+      dispatchPrompt(text);
+    }
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitCurrentInput();
+      }
+    });
+
+    sendBtn.addEventListener('click', submitCurrentInput);
+
+    // ── Real-time SSE Dispatcher ─────────────────────────────────────
+    async function dispatchPrompt(command) {
+      isStreaming = true;
+      sendBtn.disabled = true;
+      statusOrb.className = 'status-orb streaming';
+      statusText.innerHTML = '<span>●</span> Processing dispatch...';
+
+      // Notify avatar: thinking
+      if (window.toji?.setAvatarState) {
+        window.toji.setAvatarState('thinking');
+      }
+
+      const { wrap, metaEl, bubbleEl } = appendMessage('assistant', '');
+      let fullText = '';
+      let assignedAgent = 'general_chat_agent';
+
+      // Live cursor indicator
+      const cursor = document.createElement('span');
+      cursor.className = 'streaming-cursor';
+      bubbleEl.appendChild(cursor);
+
+      try {
+        const response = await fetch(`${API_BASE}/dispatch/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            command,
+            conversation_id: currentConversationId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let hasSpoken = false;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep partial trailing line
+
+          let currentEvent = 'message';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            if (trimmed.startsWith('event:')) {
+              currentEvent = trimmed.replace('event:', '').trim();
+              continue;
+            }
+
+            if (trimmed.startsWith('data:')) {
+              const dataStr = trimmed.replace('data:', '').trim();
+              try {
+                const payload = JSON.parse(dataStr);
+
+                if (currentEvent === 'meta') {
+                  if (payload.conversation_id) {
+                    currentConversationId = payload.conversation_id;
+                  }
+                  if (payload.agent) {
+                    assignedAgent = payload.agent;
+                    metaEl.innerHTML = `TOJI <span class="agent-pill">${payload.agent}</span>`;
+                  }
+                } else if (currentEvent === 'token') {
+                  if (!hasSpoken && window.toji?.setAvatarState) {
+                    window.toji.setAvatarState('speaking');
+                    hasSpoken = true;
+                  }
+                  fullText += payload.token;
+                  bubbleEl.innerHTML = renderMarkdown(fullText);
+                  bubbleEl.appendChild(cursor);
+                  feedEl.scrollTop = feedEl.scrollHeight;
+                } else if (currentEvent === 'done') {
+                  if (payload.output) {
+                    fullText = payload.output;
+                  }
+                  if (payload.conversation_id) {
+                    currentConversationId = payload.conversation_id;
+                  }
+                  if (payload.approval_id) {
+                    renderApprovalCard(wrap, payload.approval_id, payload.action_type);
+                  }
+                }
+              } catch (parseErr) {
+                console.warn('SSE Parse warning:', parseErr, dataStr);
+              }
+            }
+          }
+        }
+
+        // Finalize output
+        cursor.remove();
+        bubbleEl.innerHTML = renderMarkdown(fullText || '_Execution completed._');
+      } catch (err) {
+        cursor.remove();
+        bubbleEl.innerHTML = `<span style="color:var(--danger)">⚠️ Error: ${escapeHtml(err.message)}</span>`;
+        if (window.toji?.setAvatarState) window.toji.setAvatarState('error');
+      } finally {
+        isStreaming = false;
+        sendBtn.disabled = false;
+        statusOrb.className = 'status-orb ready';
+        statusText.innerHTML = '<span>●</span> Engine online';
+        focusInput();
+        if (window.toji?.setAvatarState) {
+          window.toji.setAvatarState('idle');
+        }
+      }
+    }
+
+    // ── Inline Approval Card ─────────────────────────────────────────
+    function renderApprovalCard(container, approvalId, actionType) {
+      const card = document.createElement('div');
+      card.className = 'approval-card';
+      card.innerHTML = `
+        <div style="font-weight:600;font-size:12px;color:var(--accent)">
+          🔒 Approval Required: ${escapeHtml(actionType || 'Sensitive Action')}
+        </div>
+        <div style="font-size:11.5px;color:var(--text-muted)">
+          ID: <code>${escapeHtml(approvalId)}</code>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve" onclick="resolveApproval('${approvalId}', true, this)">Approve & Run</button>
+          <button class="btn-reject" onclick="resolveApproval('${approvalId}', false, this)">Reject</button>
+        </div>
+      `;
+      container.appendChild(card);
+      feedEl.scrollTop = feedEl.scrollHeight;
+    }
+
+    window.resolveApproval = async function(id, approved, btnEl) {
+      const parent = btnEl.closest('.approval-card');
+      parent.innerHTML = `<em>Processing approval decision...</em>`;
+      try {
+        const endpoint = approved ? `${API_BASE}/approvals/${id}/approve` : `${API_BASE}/approvals/${id}/reject`;
+        const res = await fetch(endpoint, { method: 'POST' });
+        if (res.ok) {
+          parent.innerHTML = `<span style="color:${approved ? 'var(--success)' : 'var(--danger)'}">✓ Decision recorded: ${approved ? 'Approved' : 'Rejected'}</span>`;
+        } else {
+          parent.innerHTML = `<span style="color:var(--danger)">Failed to update approval</span>`;
+        }
+      } catch (e) {
+        parent.innerHTML = `<span style="color:var(--danger)">Error: ${e.message}</span>`;
+      }
+    };
+  </script>
+</body>
+</html>
