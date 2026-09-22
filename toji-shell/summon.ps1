@@ -15,8 +15,8 @@ $shellDir    = $PSScriptRoot
 $env:NODE_PATH = "C:\Users\aaqil\toji-shell-deps\node_modules"
 $env:TOJI_DEV  = "1"
 
-$electronExe = "C:\Users\aaqil\toji-shell-deps\node_modules\electron\dist\electron.exe"
+$cmdExe = "C:\Users\aaqil\toji-shell-deps\node_modules\.bin\electron.cmd"
 
 Write-Host "[Toji] Summoning Desktop Pet & Chat Overlay..." -ForegroundColor Green
-Start-Process -FilePath $electronExe -ArgumentList "`"$shellDir`"" -WorkingDirectory $shellDir
+Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"`"$cmdExe`" .`"" -WorkingDirectory $shellDir -WindowStyle Hidden
 Write-Host "[Toji] Summoned successfully." -ForegroundColor Cyan
