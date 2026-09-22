@@ -92,6 +92,12 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 """
 
 
+def run_migrations(conn: sqlite3.Connection) -> None:
+    """Execute initial schema migrations creating all required tables and indexes."""
+    with conn:
+        conn.executescript(SCHEMA_SQL)
+
+
 def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Create and configure a new SQLite connection."""
     if db_path is None:
@@ -113,6 +119,11 @@ def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
         conn.execute("PRAGMA cache_size = -64000;")
         conn.execute("PRAGMA temp_store = MEMORY;")
 
+    # Ensure schema is initialized if tables do not exist yet
+    cur = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='approvals';")
+    if not cur.fetchone():
+        run_migrations(conn)
+
     return conn
 
 
@@ -124,8 +135,3 @@ def get_db_connection() -> Generator[sqlite3.Connection, None, None]:
     finally:
         conn.close()
 
-
-def run_migrations(conn: sqlite3.Connection) -> None:
-    """Execute initial schema migrations creating all required tables and indexes."""
-    with conn:
-        conn.executescript(SCHEMA_SQL)
