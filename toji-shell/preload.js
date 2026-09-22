@@ -8,8 +8,7 @@
  *   window.toji.hide()               → hide the overlay
  *   window.toji.getStatus()          → Promise<{sidecar, dev}>
  *   window.toji.getApiBase()         → Promise<string>
- *   window.toji.setAvatarState(s)    → tell avatar to change state
- *   window.toji.onAvatarState(cb)    → (avatar.html only) receive state changes
+ *   window.toji.openDashboard()      → open Executive Control Panel
  *
  * Nothing from Node.js / Electron is exposed beyond this whitelist.
  */
@@ -27,14 +26,6 @@ contextBridge.exposeInMainWorld('toji', {
 
   /** Get the sidecar API base URL */
   getApiBase: () => ipcRenderer.invoke('toji:get-api-base'),
-
-  /** Push an avatar state change ('idle' | 'thinking' | 'speaking' | 'error') */
-  setAvatarState: (state) => ipcRenderer.send('toji:avatar-state', state),
-
-  /** Avatar window: subscribe to state changes pushed from main */
-  onAvatarState: (callback) => {
-    ipcRenderer.on('avatar:set-state', (_event, state) => callback(state));
-  },
 
   /** Subscribe to voice toggle events triggered from tray or main */
   onVoiceToggle: (callback) => {
