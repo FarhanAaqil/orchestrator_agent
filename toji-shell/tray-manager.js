@@ -41,27 +41,27 @@ class TrayManager {
   }
 
   init() {
-    // Build icon — try file first, fall back to inline base64
-    let icon = this._buildIcon();
+    try {
+      let icon = this._buildIcon();
+      this._tray = new Tray(icon);
+      this._tray.setToolTip('Toji — Alt+T to summon');
+      this._buildMenu();
 
-    this._tray = new Tray(icon);
-    this._tray.setToolTip('Toji — Alt+T to summon');
-
-    this._buildMenu();
-
-    // Windows/Linux: left-click toggles overlay
-    this._tray.on('click', () => {
-      this._wm.toggle();
-    });
+      // Windows/Linux: left-click toggles overlay
+      this._tray.on('click', () => {
+        this._wm.toggle();
+      });
+    } catch (err) {
+      console.warn('[Toji Tray] Initialization notice:', err.message);
+    }
   }
 
   _buildIcon() {
-    // Windows requires .ico for Shell_NotifyIcon to prevent notify_icon.cc warnings
     const candidatePaths = [
-      'C:\\Users\\aaqil\\toji-shell-deps\\toji-tray.ico',
       path.join(__dirname, 'assets', 'toji-tray.ico'),
-      'C:\\Users\\aaqil\\toji-shell-deps\\toji-tray.png',
       path.join(__dirname, 'assets', 'toji-tray.png'),
+      'C:\\Users\\aaqil\\toji-shell-deps\\toji-tray.ico',
+      'C:\\Users\\aaqil\\toji-shell-deps\\toji-tray.png',
     ];
 
     for (const p of candidatePaths) {
@@ -73,7 +73,11 @@ class TrayManager {
       } catch {}
     }
 
-    // Fallback: blank
+    try {
+      const dataImg = nativeImage.createFromDataURL(ICON_DATA_URL);
+      if (!dataImg.isEmpty()) return dataImg;
+    } catch {}
+
     return nativeImage.createEmpty();
   }
 

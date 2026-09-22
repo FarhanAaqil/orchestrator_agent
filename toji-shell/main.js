@@ -14,9 +14,19 @@
 
 'use strict';
 
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, nativeImage } = require('electron');
 const path = require('path');
 const fs   = require('fs');
+
+// Ensure external dependencies directory is always in module search path
+try {
+  const Module = require('module');
+  const depsDir = 'C:\\Users\\aaqil\\toji-shell-deps\\node_modules';
+  if (Module.globalPaths && !Module.globalPaths.includes(depsDir)) {
+    Module.globalPaths.push(depsDir);
+  }
+} catch {}
+
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, nativeImage } = require('electron');
 
 // Local modules
 const sidecar      = require('./sidecar');
@@ -70,20 +80,14 @@ app.whenReady().then(async () => {
   const configManager = require('./config-manager');
   wm.setMode(configManager.getMode());
 
-  // Start the FastAPI sidecar with startup feedback
-  await sidecar.spawn({
-    dev: IS_DEV,
-    onStarting: () => wm.setAvatarState('starting'),
-  });
-
-  // If in interface mode, show overlay; if in voice mode, keep overlay hidden
-  if (configManager.getMode() === 'interface') {
-    wm.show();
-  }
-
   // Create tray AFTER windows exist (Windows 11 requirement)
   const tray = new TrayManager(wm);
   tray.init();
+
+  // If in interface mode, show overlay immediately (<50ms); if in voice mode, keep overlay hidden
+  if (configManager.getMode() === 'interface') {
+    wm.show();
+  }
 
   // React to config mode changes without app restart
   configManager.onConfigChange((cfg) => {
@@ -114,6 +118,19 @@ app.whenReady().then(async () => {
   } else {
     console.log('[Toji] Mode hotkey registered:', MODE_HOTKEY);
   }
+
+  // Start the FastAPI sidecar asynchronously in background (non-blocking)
+  sidecar.spawn({
+    dev: IS_DEV,
+    onStarting: () => wm.setAvatarState('starting'),
+  }).then(() => {
+    tray.refresh();
+    wm.notifyBackendReady();
+    wm.setAvatarState('idle');
+  }).catch((err) => {
+    console.error('[Toji main] Sidecar spawn background error:', err);
+    tray.refresh();
+  });
 
   // macOS: re-create window when dock icon clicked
   app.on('activate', () => {
@@ -151,6 +168,11 @@ ipcMain.on('toji:hide', () => {
 ipcMain.on('toji:toggle-overlay', () => {
   const wm = WindowManager.getInstance();
   if (wm) wm.toggle();
+});
+
+ipcMain.on('toji:open-dashboard', () => {
+  const wm = WindowManager.getInstance();
+  if (wm) wm.createDashboard();
 });
 
 ipcMain.on('toji:avatar-state', (_event, state) => {

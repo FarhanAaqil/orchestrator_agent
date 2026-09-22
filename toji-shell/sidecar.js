@@ -23,8 +23,8 @@ const API_BASE = `http://${HOST}:${PORT}`;
 let _proc   = null;
 let _status = 'idle'; // idle | starting | ready | error | dead
 
-// ── Quick port check (1.5s timeout per §1) ───────────────────────────────────
-function isPortListening(timeoutMs = 1500) {
+// ── Quick port check (400ms fast timeout) ────────────────────────────────────
+function isPortListening(timeoutMs = 400) {
   return new Promise((resolve) => {
     const req = http.get(`${API_BASE}/health`, (res) => {
       resolve(res.statusCode === 200);
@@ -38,8 +38,8 @@ function isPortListening(timeoutMs = 1500) {
   });
 }
 
-// ── Health poll (500ms interval up to 10s per §1) ─────────────────────────────
-function pollHealth({ intervalMs = 500, timeoutMs = 10_000 } = {}) {
+// ── Health poll (250ms interval up to 8s) ─────────────────────────────────────
+function pollHealth({ intervalMs = 250, timeoutMs = 8_000 } = {}) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     const check = () => {
@@ -60,31 +60,23 @@ function pollHealth({ intervalMs = 500, timeoutMs = 10_000 } = {}) {
         }
       });
     };
-    setTimeout(check, 200);
+    setTimeout(check, 100);
   });
 }
 
-// ── Execute Docker Compose fallback ──────────────────────────────────────────
+// ── Execute Docker Compose fallback (Fast 1.5s probe) ─────────────────────────
 function tryDockerComposeUp(projectRoot) {
   return new Promise((resolve) => {
-    // Try 'docker compose up -d' first, fallback to 'docker-compose up -d'
+    // Fast 1.5s check. If Docker daemon is stopped, fail fast to local python
     const cmd = 'docker compose up -d';
-    console.log('[Toji sidecar] Attempting fallback:', cmd);
-    exec(cmd, { cwd: projectRoot, timeout: 8000 }, (err, stdout, stderr) => {
+    console.log('[Toji sidecar] Fast probe for Docker backend:', cmd);
+    exec(cmd, { cwd: projectRoot, timeout: 1500 }, (err, stdout) => {
       if (!err) {
-        console.log('[Toji sidecar] Docker compose up succeeded:', stdout.trim());
+        console.log('[Toji sidecar] Docker backend running:', stdout.trim());
         resolve(true);
       } else {
-        console.warn('[Toji sidecar] docker compose failed, trying docker-compose:', err.message);
-        exec('docker-compose up -d', { cwd: projectRoot, timeout: 8000 }, (err2) => {
-          if (!err2) {
-            console.log('[Toji sidecar] docker-compose up succeeded');
-            resolve(true);
-          } else {
-            console.warn('[Toji sidecar] Docker not available or compose failed:', err2.message);
-            resolve(false);
-          }
-        });
+        console.log('[Toji sidecar] Docker not active or cold, proceeding directly to local runner');
+        resolve(false);
       }
     });
   });

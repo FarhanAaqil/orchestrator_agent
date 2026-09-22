@@ -76,19 +76,9 @@ class WindowManager {
       },
     });
 
-    // Step 1: Show branded loading screen immediately
-    const loadingPath = path.join(__dirname, 'assets', 'loading.html');
-    this._overlay.loadFile(loadingPath);
-
-    // Step 2: Poll sidecar, then navigate to real chat UI
-    this._waitForSidecarThenNavigate();
-
-    // Inject drag handle + rounded corners each time a page finishes loading
-    this._overlay.webContents.on('did-finish-load', () => {
-      this._injectDragHandle();
-      this._injectBorderRadius();
-      this.show();
-    });
+    // Step 1: Load instant, zero-CDN local companion chat UI (<15ms)
+    const chatPath = path.join(__dirname, 'assets', 'chat.html');
+    this._overlay.loadFile(chatPath);
 
     // Escape key hides the overlay
     this._overlay.webContents.on('before-input-event', (_event, input) => {
@@ -153,31 +143,11 @@ class WindowManager {
     }
   }
 
-  /** Poll /health until ready, then navigate the overlay to the real chat UI */
-  _waitForSidecarThenNavigate() {
-    const http     = require('http');
-    const MAX_MS   = 45_000;
-    const INTERVAL = 700;
-    const start    = Date.now();
-
-    const attempt = () => {
-      if (!this._overlay) return; // window was closed before sidecar ready
-      if (Date.now() - start > MAX_MS) {
-        console.error('[WindowManager] Sidecar did not become ready in time');
-        return;
-      }
-      http.get(`${API_BASE}/health`, (res) => {
-        if (res.statusCode === 200) {
-          console.log('[WindowManager] Sidecar ready — navigating to chat UI');
-          this._overlay?.loadURL(API_BASE);
-        } else {
-          setTimeout(attempt, INTERVAL);
-        }
-        res.resume();
-      }).on('error', () => setTimeout(attempt, INTERVAL));
-    };
-
-    setTimeout(attempt, 500);
+  /** Notify overlay that backend sidecar is ready */
+  notifyBackendReady() {
+    if (this._overlay && !this._overlay.isDestroyed()) {
+      this._overlay.webContents.send('toji:backend-ready');
+    }
   }
 
   // ── Avatar (Desktop Pet) ─────────────────────────────────────────────────────
@@ -244,6 +214,7 @@ class WindowManager {
       this._overlay.setAlwaysOnTop(true);
       this._overlay.moveTop();
       this._overlay.focus();
+      this._overlay.webContents.send('toji:focus-input');
     }
     // Pet always stays visible on screen
     if (this._avatar && !this._avatar.isDestroyed()) {
