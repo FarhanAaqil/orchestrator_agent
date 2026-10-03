@@ -51,3 +51,7 @@ jobs:
       - name: Run test suite (excluding live LLM)
         run: |
           pytest -m "not real_llm" -v
+
+      - name: Router Eval CI Gate (Frozen Test Split)
+        run: |
+          python eval/run_eval.py --dry-run --split test --ci-gate --no-save

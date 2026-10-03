@@ -12,18 +12,26 @@ from orchestrator_core.config import get_settings
 
 
 SCHEMA_SQL = """
--- 1. Approvals table (atomic state machine storage)
+-- 1. Approvals table (atomic state machine storage with SEC-01..08 hardening)
 CREATE TABLE IF NOT EXISTS approvals (
     id TEXT PRIMARY KEY,
     action_type TEXT NOT NULL,
     payload_json TEXT NOT NULL,
-    status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'rejected', 'executing', 'executed', 'expired')),
+    target TEXT,
+    payload_hash TEXT,
+    status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'rejected', 'executing', 'executed', 'expired', 'superseded')),
+    idempotency_key TEXT UNIQUE,
+    approval_signature TEXT,
+    approved_hash TEXT,
+    supersedes_id TEXT REFERENCES approvals(id),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    decided_at TIMESTAMP,
     expires_at TIMESTAMP,
     executed_at TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
 CREATE INDEX IF NOT EXISTS idx_approvals_expires_at ON approvals(expires_at);
+CREATE INDEX IF NOT EXISTS idx_approvals_idempotency_key ON approvals(idempotency_key);
 
 -- 2. Pipeline runs table
 CREATE TABLE IF NOT EXISTS pipeline_runs (
@@ -89,6 +97,19 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+
+-- 7. Audit log table (SEC-07: auditable executions and gate transitions)
+CREATE TABLE IF NOT EXISTS audit_log (
+    id TEXT PRIMARY KEY,
+    actor TEXT NOT NULL,
+    event TEXT NOT NULL,
+    entity TEXT,
+    entity_id TEXT,
+    detail_json TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
 """
 
 
@@ -96,6 +117,51 @@ def run_migrations(conn: sqlite3.Connection) -> None:
     """Execute initial schema migrations creating all required tables and indexes."""
     with conn:
         conn.executescript(SCHEMA_SQL)
+        # Check and migrate columns on existing approvals table if needed
+        cur = conn.execute("PRAGMA table_info(approvals);")
+        columns = [row[1] for row in cur.fetchall()]
+        if "target" not in columns:
+            conn.execute("ALTER TABLE approvals ADD COLUMN target TEXT;")
+        if "payload_hash" not in columns:
+            conn.execute("ALTER TABLE approvals ADD COLUMN payload_hash TEXT;")
+        if "idempotency_key" not in columns:
+            conn.execute("ALTER TABLE approvals ADD COLUMN idempotency_key TEXT;")
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_approvals_idempotency_key ON approvals(idempotency_key);")
+        if "approval_signature" not in columns:
+            conn.execute("ALTER TABLE approvals ADD COLUMN approval_signature TEXT;")
+        if "approved_hash" not in columns:
+            conn.execute("ALTER TABLE approvals ADD COLUMN approved_hash TEXT;")
+        if "supersedes_id" not in columns:
+            conn.execute("ALTER TABLE approvals ADD COLUMN supersedes_id TEXT REFERENCES approvals(id);")
+        if "decided_at" not in columns:
+            conn.execute("ALTER TABLE approvals ADD COLUMN decided_at TIMESTAMP;")
+
+
+def log_audit(
+    db: sqlite3.Connection,
+    actor: str,
+    event: str,
+    entity: str = "approval",
+    entity_id: Optional[str] = None,
+    detail: Optional[dict] = None,
+) -> str:
+    """Insert an immutable record into the audit_log table (SEC-07)."""
+    import json
+    import uuid
+    from datetime import datetime, timezone
+
+    audit_id = str(uuid.uuid4())
+    detail_json = json.dumps(detail or {}, separators=(",", ":"), sort_keys=True)
+    created_at = datetime.now(timezone.utc).isoformat()
+    with db:
+        db.execute(
+            """
+            INSERT INTO audit_log (id, actor, event, entity, entity_id, detail_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (audit_id, actor, event, entity, entity_id, detail_json, created_at),
+        )
+    return audit_id
 
 
 def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
