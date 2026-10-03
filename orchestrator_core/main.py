@@ -21,12 +21,18 @@ from orchestrator_core.config import get_settings
 from orchestrator_core.storage.db import get_db, run_migrations
 from orchestrator_core.core.scheduler import start_scheduler, stop_scheduler
 from orchestrator_core.exceptions import (
-    ApprovalNotFoundError,
-    ApprovalNotGrantedError,
-    ApprovalExpiredError,
     ApprovalAlreadyExecutedError,
     ApprovalClaimConflictError,
+    ApprovalExpiredError,
+    ApprovalHashMismatchError,
+    ApprovalNotFoundError,
+    ApprovalNotGrantedError,
+    ApprovalSignatureInvalidError,
+    ApprovalSupersededError,
+    ApprovalTamperedError,
     CircuitOpenError,
+    IdempotencyConflictError,
+    SecurityPolicyViolationError,
     SSRFViolationError,
 )
 from orchestrator_core.models import ErrorResponse
@@ -119,6 +125,42 @@ async def approval_already_executed_handler(request: Request, exc: ApprovalAlrea
 async def approval_claim_conflict_handler(request: Request, exc: ApprovalClaimConflictError):
     return JSONResponse(status_code=409,
         content=ErrorResponse(error="APPROVAL_CLAIM_CONFLICT", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(ApprovalHashMismatchError)
+async def approval_hash_mismatch_handler(request: Request, exc: ApprovalHashMismatchError):
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="APPROVAL_HASH_MISMATCH", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(ApprovalTamperedError)
+async def approval_tampered_handler(request: Request, exc: ApprovalTamperedError):
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="APPROVAL_TAMPERED", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(ApprovalSignatureInvalidError)
+async def approval_signature_invalid_handler(request: Request, exc: ApprovalSignatureInvalidError):
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="APPROVAL_SIGNATURE_INVALID", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(ApprovalSupersededError)
+async def approval_superseded_handler(request: Request, exc: ApprovalSupersededError):
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="APPROVAL_SUPERSEDED", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(IdempotencyConflictError)
+async def idempotency_conflict_handler(request: Request, exc: IdempotencyConflictError):
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="IDEMPOTENCY_CONFLICT", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(SecurityPolicyViolationError)
+async def security_policy_violation_handler(request: Request, exc: SecurityPolicyViolationError):
+    return JSONResponse(status_code=403,
+        content=ErrorResponse(error="SECURITY_POLICY_VIOLATION", detail=str(exc)).model_dump())
 
 
 @app.exception_handler(CircuitOpenError)

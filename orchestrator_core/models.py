@@ -42,12 +42,19 @@ class AgentResult(BaseModel):
 # ── Approval models ────────────────────────────────────────────────────────────
 
 class ApprovalRecord(BaseModel):
-    """Shape of a row in the approvals table."""
+    """Shape of a row in the approvals table with SEC-01..08 hardening fields."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     action_type: str
     payload_json: str      # JSON string — immutable after creation
-    status: Literal["pending", "approved", "rejected", "executing", "executed", "expired"]
+    target: Optional[str] = None
+    payload_hash: Optional[str] = None
+    status: Literal["pending", "approved", "rejected", "executing", "executed", "expired", "superseded"]
+    idempotency_key: Optional[str] = None
+    approval_signature: Optional[str] = None
+    approved_hash: Optional[str] = None
+    supersedes_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    decided_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     executed_at: Optional[datetime] = None
 
@@ -56,6 +63,35 @@ class ApprovalRequest(BaseModel):
     """Body for POST /approvals (internal use — agents call request_approval(), not this directly)."""
     action_type: str
     payload: dict[str, Any]
+    target: Optional[str] = None
+    idempotency_key: Optional[str] = None
+
+
+class ApprovalApproveRequest(BaseModel):
+    """Body for POST /approvals/{id}/approve with TOCTOU expected_hash validation."""
+    expected_hash: Optional[str] = None
+
+
+class ApprovalRejectRequest(BaseModel):
+    """Body for POST /approvals/{id}/reject."""
+    reason: Optional[str] = None
+
+
+class ApprovalEditRequest(BaseModel):
+    """Body for POST /approvals/{id}/edit (SEC-06 edit-and-reapprove flow)."""
+    payload: dict[str, Any]
+    target: Optional[str] = None
+
+
+class AuditLogRecord(BaseModel):
+    """Shape of a row in the audit_log table (SEC-07)."""
+    id: str
+    actor: str
+    event: str
+    entity: Optional[str] = None
+    entity_id: Optional[str] = None
+    detail_json: Optional[str] = None
+    created_at: datetime
 
 
 # ── Pipeline models ────────────────────────────────────────────────────────────

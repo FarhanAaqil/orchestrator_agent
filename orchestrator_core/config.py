@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     )
     environment: str = "development"
     app_version: str = "1.0.0"
+    executor_hmac_secret: str = Field(
+        default="aaqil-secret-hmac-key-dev-environment",
+        validation_alias=AliasChoices("executor_hmac_secret", "EXECUTOR_HMAC_SECRET"),
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
