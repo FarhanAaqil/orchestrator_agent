@@ -110,31 +110,105 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
+
+-- 8. Jobs table (autonomous work units)
+CREATE TABLE IF NOT EXISTS jobs (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL,
+    parent_job_id TEXT REFERENCES jobs(id),
+    session_id TEXT REFERENCES conversations(id),
+    schedule_id TEXT,
+    agent TEXT NOT NULL,
+    goal TEXT NOT NULL,
+    params_json TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL CHECK (status IN (
+        'queued','running','awaiting_approval','awaiting_input',
+        'succeeded','failed','cancelled','expired'
+    )),
+    priority INTEGER NOT NULL DEFAULT 5,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 3,
+    not_before TIMESTAMP,
+    claimed_by TEXT,
+    claimed_at TIMESTAMP,
+    heartbeat_at TIMESTAMP,
+    step_count INTEGER NOT NULL DEFAULT 0,
+    max_steps INTEGER NOT NULL DEFAULT 25,
+    token_budget INTEGER NOT NULL DEFAULT 60000,
+    tokens_used INTEGER NOT NULL DEFAULT 0,
+    cost_usd REAL NOT NULL DEFAULT 0,
+    result_json TEXT,
+    error TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at TIMESTAMP,
+    finished_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_jobs_queue ON jobs(status, priority, not_before);
+CREATE INDEX IF NOT EXISTS idx_jobs_thread ON jobs(thread_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_session ON jobs(session_id);
+
+-- 9. Job steps table (step-level trace for every LLM/tool/propose/action call)
+CREATE TABLE IF NOT EXISTS job_steps (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('llm','tool','propose','note','error')),
+    name TEXT,
+    input_json TEXT,
+    output_json TEXT,
+    tokens_in INTEGER,
+    tokens_out INTEGER,
+    cost_usd REAL,
+    duration_ms INTEGER,
+    ok INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(job_id, idx)
+);
+CREATE INDEX IF NOT EXISTS idx_job_steps_job ON job_steps(job_id, idx);
+
+-- 10. System control flags
+CREATE TABLE IF NOT EXISTS system_flags (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
 def run_migrations(conn: sqlite3.Connection) -> None:
     """Execute initial schema migrations creating all required tables and indexes."""
     with conn:
+        # Check and migrate columns on existing approvals table if needed before creating indexes
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='approvals';"
+        ).fetchone()
+        if table_exists:
+            cur = conn.execute("PRAGMA table_info(approvals);")
+            columns = [row[1] for row in cur.fetchall()]
+            if "target" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN target TEXT;")
+            if "payload_hash" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN payload_hash TEXT;")
+            if "idempotency_key" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN idempotency_key TEXT;")
+            if "approval_signature" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN approval_signature TEXT;")
+            if "approved_hash" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN approved_hash TEXT;")
+            if "supersedes_id" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN supersedes_id TEXT REFERENCES approvals(id);")
+            if "decided_at" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN decided_at TIMESTAMP;")
+
         conn.executescript(SCHEMA_SQL)
-        # Check and migrate columns on existing approvals table if needed
-        cur = conn.execute("PRAGMA table_info(approvals);")
-        columns = [row[1] for row in cur.fetchall()]
-        if "target" not in columns:
-            conn.execute("ALTER TABLE approvals ADD COLUMN target TEXT;")
-        if "payload_hash" not in columns:
-            conn.execute("ALTER TABLE approvals ADD COLUMN payload_hash TEXT;")
-        if "idempotency_key" not in columns:
-            conn.execute("ALTER TABLE approvals ADD COLUMN idempotency_key TEXT;")
-            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_approvals_idempotency_key ON approvals(idempotency_key);")
-        if "approval_signature" not in columns:
-            conn.execute("ALTER TABLE approvals ADD COLUMN approval_signature TEXT;")
-        if "approved_hash" not in columns:
-            conn.execute("ALTER TABLE approvals ADD COLUMN approved_hash TEXT;")
-        if "supersedes_id" not in columns:
-            conn.execute("ALTER TABLE approvals ADD COLUMN supersedes_id TEXT REFERENCES approvals(id);")
-        if "decided_at" not in columns:
-            conn.execute("ALTER TABLE approvals ADD COLUMN decided_at TIMESTAMP;")
+
+        # Seed system control flags if not already present
+        conn.execute(
+            "INSERT OR IGNORE INTO system_flags (key, value) VALUES ('kill_switch', 'off');"
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO system_flags (key, value) VALUES ('daily_budget_usd', '5.00');"
+        )
 
 
 def log_audit(

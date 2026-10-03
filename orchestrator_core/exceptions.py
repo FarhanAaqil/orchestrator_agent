@@ -127,3 +127,88 @@ class SSRFViolationError(Exception):
     def __init__(self, reason: str):
         self.reason = reason
         super().__init__(f"SSRF policy violation: {reason}")
+
+
+# ── Job & Autonomy Engine Exceptions ──────────────────────────────────────────
+
+class JobError(Exception):
+    """Base exception for all job and autonomy engine errors."""
+    pass
+
+
+class JobNotFoundError(JobError):
+    """Raised when a job ID does not exist."""
+    def __init__(self, job_id: str):
+        self.job_id = job_id
+        super().__init__(f"Job {job_id} not found")
+
+
+class InvalidJobStateTransitionError(JobError):
+    """Raised when an illegal job state transition is attempted."""
+    def __init__(self, job_id: str, current_state: str, target_state: str):
+        self.job_id = job_id
+        self.current_state = current_state
+        self.target_state = target_state
+        super().__init__(
+            f"Invalid state transition for job {job_id}: '{current_state}' -> '{target_state}'"
+        )
+
+
+class JobClaimConflictError(JobError):
+    """Raised when an atomic claim for a job fails because another worker claimed it."""
+    def __init__(self, job_id: str):
+        self.job_id = job_id
+        super().__init__(f"Job {job_id} could not be claimed (already claimed or no longer queued)")
+
+
+class KillSwitchActiveError(JobError):
+    """Raised when the emergency kill switch is active."""
+    def __init__(self, message: str = "Emergency kill switch is ACTIVE. Job execution halted."):
+        super().__init__(message)
+
+
+class BudgetExceededError(JobError):
+    """Raised when daily budget limit is exceeded."""
+    def __init__(self, current_cost: float, budget_limit: float):
+        self.current_cost = current_cost
+        self.budget_limit = budget_limit
+        super().__init__(
+            f"Daily budget exceeded: cost ${current_cost:.2f} >= budget limit ${budget_limit:.2f}"
+        )
+
+
+class MaxStepsExceededError(JobError):
+    """Raised when an agent job exceeds its maximum allowed steps."""
+    def __init__(self, job_id: str, steps: int, max_steps: int):
+        self.job_id = job_id
+        self.steps = steps
+        self.max_steps = max_steps
+        super().__init__(f"Job {job_id} exceeded step cap: {steps}/{max_steps} steps taken")
+
+
+class TokenBudgetExceededError(JobError):
+    """Raised when an agent job exhausts its token budget."""
+    def __init__(self, job_id: str, tokens_used: int, token_budget: int):
+        self.job_id = job_id
+        self.tokens_used = tokens_used
+        self.token_budget = token_budget
+        super().__init__(f"Job {job_id} exhausted token budget: {tokens_used}/{token_budget} tokens")
+
+
+class JobTimeoutError(JobError):
+    """Raised when a job exceeds wall-clock timeout."""
+    def __init__(self, job_id: str, timeout_seconds: float):
+        self.job_id = job_id
+        self.timeout_seconds = timeout_seconds
+        super().__init__(f"Job {job_id} timed out after {timeout_seconds:.1f}s")
+
+
+class LoopDetectedError(JobError):
+    """Raised by the repeat detector when an agent executes identical tool calls 5×."""
+    def __init__(self, job_id: str, tool_name: str, count: int):
+        self.job_id = job_id
+        self.tool_name = tool_name
+        self.count = count
+        super().__init__(
+            f"Repeat loop detected in job {job_id}: tool '{tool_name}' invoked {count}x with identical arguments"
+        )

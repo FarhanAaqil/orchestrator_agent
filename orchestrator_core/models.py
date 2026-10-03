@@ -125,10 +125,102 @@ class PipelineRunStatus(BaseModel):
     completed_at: Optional[datetime] = None
 
 
-# ── Error envelope ─────────────────────────────────────────────────────────────
-
 class ErrorResponse(BaseModel):
     """Standard error shape for all 4xx/5xx responses."""
     error: str
     detail: Optional[str] = None
     request_id: Optional[str] = None
+
+
+# ── Job & Autonomy Engine models ──────────────────────────────────────────────
+
+JobStatus = Literal[
+    "queued",
+    "running",
+    "awaiting_approval",
+    "awaiting_input",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "expired",
+]
+
+JobStepKind = Literal["llm", "tool", "propose", "note", "error"]
+
+
+class JobRecord(BaseModel):
+    """Row shape in the jobs table (persistent work unit)."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    thread_id: str
+    parent_job_id: Optional[str] = None
+    session_id: Optional[str] = None
+    schedule_id: Optional[str] = None
+    agent: str
+    goal: str
+    params_json: str = "{}"
+    status: JobStatus = "queued"
+    priority: int = 5
+    attempts: int = 0
+    max_attempts: int = 3
+    not_before: Optional[datetime] = None
+    claimed_by: Optional[str] = None
+    claimed_at: Optional[datetime] = None
+    heartbeat_at: Optional[datetime] = None
+    step_count: int = 0
+    max_steps: int = 25
+    token_budget: int = 60000
+    tokens_used: int = 0
+    cost_usd: float = 0.0
+    result_json: Optional[str] = None
+    error: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+
+class JobStepRecord(BaseModel):
+    """Row shape in the job_steps table."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    job_id: str
+    idx: int
+    kind: JobStepKind
+    name: Optional[str] = None
+    input_json: Optional[str] = None
+    output_json: Optional[str] = None
+    tokens_in: Optional[int] = None
+    tokens_out: Optional[int] = None
+    cost_usd: Optional[float] = None
+    duration_ms: Optional[int] = None
+    ok: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class JobCreateRequest(BaseModel):
+    """Body for POST /jobs."""
+    agent: str
+    goal: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    thread_id: Optional[str] = None
+    parent_job_id: Optional[str] = None
+    session_id: Optional[str] = None
+    priority: int = Field(default=5, ge=1, le=10)
+    max_steps: int = Field(default=25, ge=1, le=100)
+    token_budget: int = Field(default=60000, ge=1000)
+
+
+class JobAnswerRequest(BaseModel):
+    """Body for answering an awaiting_input job."""
+    answer: str
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class SystemFlagRecord(BaseModel):
+    """Row in system_flags table."""
+    key: str
+    value: str
+    updated_at: datetime
+
+
+class KillSwitchRequest(BaseModel):
+    """Body for POST /system/kill-switch."""
+    on: bool
