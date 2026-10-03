@@ -30,10 +30,19 @@ from orchestrator_core.exceptions import (
     ApprovalSignatureInvalidError,
     ApprovalSupersededError,
     ApprovalTamperedError,
+    BudgetExceededError,
     CircuitOpenError,
     IdempotencyConflictError,
+    InvalidJobStateTransitionError,
+    JobClaimConflictError,
+    JobNotFoundError,
+    JobTimeoutError,
+    KillSwitchActiveError,
+    LoopDetectedError,
+    MaxStepsExceededError,
     SecurityPolicyViolationError,
     SSRFViolationError,
+    TokenBudgetExceededError,
 )
 from orchestrator_core.models import ErrorResponse
 
@@ -175,6 +184,60 @@ async def ssrf_violation_handler(request: Request, exc: SSRFViolationError):
         content=ErrorResponse(error="SSRF_VIOLATION", detail=str(exc)).model_dump())
 
 
+@app.exception_handler(JobNotFoundError)
+async def job_not_found_handler(request: Request, exc: JobNotFoundError):
+    return JSONResponse(status_code=404,
+        content=ErrorResponse(error="JOB_NOT_FOUND", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(InvalidJobStateTransitionError)
+async def invalid_job_transition_handler(request: Request, exc: InvalidJobStateTransitionError):
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="INVALID_JOB_TRANSITION", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(JobClaimConflictError)
+async def job_claim_conflict_handler(request: Request, exc: JobClaimConflictError):
+    return JSONResponse(status_code=409,
+        content=ErrorResponse(error="JOB_CLAIM_CONFLICT", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(KillSwitchActiveError)
+async def kill_switch_active_handler(request: Request, exc: KillSwitchActiveError):
+    return JSONResponse(status_code=503,
+        content=ErrorResponse(error="KILL_SWITCH_ACTIVE", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(BudgetExceededError)
+async def budget_exceeded_handler(request: Request, exc: BudgetExceededError):
+    return JSONResponse(status_code=429,
+        content=ErrorResponse(error="BUDGET_EXCEEDED", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(MaxStepsExceededError)
+async def max_steps_exceeded_handler(request: Request, exc: MaxStepsExceededError):
+    return JSONResponse(status_code=422,
+        content=ErrorResponse(error="MAX_STEPS_EXCEEDED", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(TokenBudgetExceededError)
+async def token_budget_exceeded_handler(request: Request, exc: TokenBudgetExceededError):
+    return JSONResponse(status_code=422,
+        content=ErrorResponse(error="TOKEN_BUDGET_EXCEEDED", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(JobTimeoutError)
+async def job_timeout_handler(request: Request, exc: JobTimeoutError):
+    return JSONResponse(status_code=504,
+        content=ErrorResponse(error="JOB_TIMEOUT", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(LoopDetectedError)
+async def loop_detected_handler(request: Request, exc: LoopDetectedError):
+    return JSONResponse(status_code=422,
+        content=ErrorResponse(error="LOOP_DETECTED", detail=str(exc)).model_dump())
+
+
 # ── Route registration ────────────────────────────────────────────────────────
 
 from orchestrator_core.dependencies import verify_bearer_token
@@ -186,6 +249,8 @@ from orchestrator_core.routes import pipeline as pipeline_module
 from orchestrator_core.routes import router_eval as router_eval_module
 from orchestrator_core.routes import conversations as conversations_module
 from orchestrator_core.routes import agents as agents_module
+from orchestrator_core.routes import jobs as jobs_module
+from orchestrator_core.routes import system as system_module
 
 auth_dependencies = [Depends(verify_bearer_token)]
 
@@ -197,6 +262,8 @@ app.include_router(pipeline_module.router, dependencies=auth_dependencies)
 app.include_router(router_eval_module.router, dependencies=auth_dependencies)
 app.include_router(conversations_module.router, dependencies=auth_dependencies)
 app.include_router(agents_module.router, dependencies=auth_dependencies)
+app.include_router(jobs_module.router, dependencies=auth_dependencies)
+app.include_router(system_module.router, dependencies=auth_dependencies)
 
 
 # ── Health check endpoint ─────────────────────────────────────────────────────
