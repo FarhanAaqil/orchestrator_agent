@@ -251,6 +251,7 @@ from orchestrator_core.routes import conversations as conversations_module
 from orchestrator_core.routes import agents as agents_module
 from orchestrator_core.routes import jobs as jobs_module
 from orchestrator_core.routes import system as system_module
+from orchestrator_core.routes import memory as memory_module
 
 auth_dependencies = [Depends(verify_bearer_token)]
 
@@ -264,6 +265,7 @@ app.include_router(conversations_module.router, dependencies=auth_dependencies)
 app.include_router(agents_module.router, dependencies=auth_dependencies)
 app.include_router(jobs_module.router, dependencies=auth_dependencies)
 app.include_router(system_module.router, dependencies=auth_dependencies)
+app.include_router(memory_module.router, dependencies=auth_dependencies)
 
 
 # ── Health check endpoint ─────────────────────────────────────────────────────

@@ -224,3 +224,53 @@ class SystemFlagRecord(BaseModel):
 class KillSwitchRequest(BaseModel):
     """Body for POST /system/kill-switch."""
     on: bool
+
+
+# ── Memory models ─────────────────────────────────────────────────────────────
+
+MemoryItemKind = Literal["fact", "preference", "episode_summary"]
+
+
+class MemoryItemRecord(BaseModel):
+    """Row shape in the memory_items table."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    kind: MemoryItemKind
+    key: Optional[str] = None
+    value: str
+    source_session_id: Optional[str] = None
+    source_message_id: Optional[str] = None
+    pending_review: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    deleted: bool = False
+
+
+class MemoryItemCreate(BaseModel):
+    """Body for POST /memory."""
+    kind: MemoryItemKind = "fact"
+    key: Optional[str] = None
+    value: str
+    source_session_id: Optional[str] = None
+    source_message_id: Optional[str] = None
+    pending_review: bool = True
+
+
+class MemoryItemUpdate(BaseModel):
+    """Body for PATCH /memory/{id}."""
+    key: Optional[str] = None
+    value: Optional[str] = None
+    pending_review: Optional[bool] = None
+
+
+class MemoryItemResponse(BaseModel):
+    """Response shape for memory item."""
+    id: str
+    kind: str
+    key: Optional[str] = None
+    value: str
+    source_session_id: Optional[str] = None
+    source_message_id: Optional[str] = None
+    pending_review: bool
+    created_at: str
+    updated_at: str
+    deleted: bool = False
