@@ -26,6 +26,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "email_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset({"email_read", "propose_action"})
+
 AAQIL_SIGNATURE = """--
 Farhan Aaqil
 B.Tech AI/ML | JPNCE Mahbubnagar

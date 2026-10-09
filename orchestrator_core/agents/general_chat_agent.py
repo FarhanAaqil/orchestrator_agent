@@ -19,6 +19,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "general_chat_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset({"ddg_search"})
+
 _TOJI_PROMPT = """You are Toji — Farhan Aaqil's central intelligent orchestration companion and elite operator.
 You are composed, formidable, razor-sharp, technically flawless, pragmatic, and direct. You cut through fluff and deliver results.
 

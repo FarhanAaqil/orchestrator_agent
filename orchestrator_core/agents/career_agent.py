@@ -23,6 +23,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "career_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset({"fetch_page", "github_read", "google_search"})
+
 AAQIL_RESUME = """
 Name: Farhan Aaqil
 Degree: B.Tech AI/ML — JPNCE Mahbubnagar (2027)

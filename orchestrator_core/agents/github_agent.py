@@ -22,6 +22,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "github_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset({"github_read", "propose_action"})
+
 GITHUB_USERNAME = "FarhanAaqil"
 
 _SYSTEM_PROMPT = f"""You are Aaqil's GitHub Agent — his technical repository manager and documentation specialist.

@@ -18,6 +18,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "info_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset({"google_search", "fetch_page", "ddg_search"})
+
 AAQIL_PORTFOLIO = """
 Author Profile: Farhan Aaqil
 Degree: B.Tech in Artificial Intelligence & Machine Learning (AIML), JPNCE Mahbubnagar (2027)
