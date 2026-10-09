@@ -39,6 +39,27 @@ class AgentResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+AGENT_ALIASES: dict[str, str] = {
+    "research": "research_agent",
+    "career": "career_agent",
+    "growth": "growth_content_agent",
+    "growth_content": "growth_content_agent",
+    "critic": "critic_agent",
+    "github": "github_agent",
+    "email": "email_agent",
+    "linkedin": "linkedin_agent",
+    "info": "info_agent",
+    "general_chat": "general_chat_agent",
+    "general": "general_chat_agent",
+}
+
+
+def canonical_agent_name(name: str) -> str:
+    """Normalize agent name or alias to canonical roster identifier."""
+    cleaned = name.strip().lower()
+    return AGENT_ALIASES.get(cleaned, cleaned)
+
+
 # ── Approval models ────────────────────────────────────────────────────────────
 
 class ApprovalRecord(BaseModel):

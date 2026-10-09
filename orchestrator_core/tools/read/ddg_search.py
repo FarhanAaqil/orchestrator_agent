@@ -16,7 +16,7 @@ from orchestrator_core.core.circuit_breaker import CircuitBreaker
 logger = logging.getLogger(__name__)
 
 _ddg_breaker = CircuitBreaker(
-    service="duckduckgo_search",
+    service="ddg_search_api",
     failure_threshold=3,
     cooldown_seconds=30.0,
 )

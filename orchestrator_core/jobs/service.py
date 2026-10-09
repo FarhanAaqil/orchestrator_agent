@@ -15,12 +15,19 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from orchestrator_core.exceptions import (
+    AgentDisabledError,
     JobNotFoundError,
     JobClaimConflictError,
 )
 from orchestrator_core.jobs.events import event_hub
 from orchestrator_core.jobs.state_machine import validate_transition
-from orchestrator_core.models import JobRecord, JobStepRecord, JobStatus, JobStepKind
+from orchestrator_core.models import (
+    JobRecord,
+    JobStepRecord,
+    JobStatus,
+    JobStepKind,
+    canonical_agent_name,
+)
 from orchestrator_core.storage.db import log_audit
 
 logger = logging.getLogger(__name__)
@@ -45,6 +52,16 @@ class JobService:
         not_before: Optional[datetime] = None,
     ) -> JobRecord:
         """Create and queue a new autonomous job."""
+        canonical_agent = canonical_agent_name(agent)
+        flag_rows = db.execute(
+            "SELECT value FROM system_flags WHERE key IN (?, ?)",
+            (f"agent_enabled_{canonical_agent}", f"agent_enabled_{agent}"),
+        ).fetchall()
+        for r in flag_rows:
+            if r["value"].strip() == "0":
+                logger.warning("Agent '%s' is administratively disabled. Cannot create job.", agent)
+                raise AgentDisabledError(canonical_agent)
+
         job_id = str(uuid.uuid4())
         effective_thread_id = thread_id or str(uuid.uuid4())
         params_json = json.dumps(params or {}, separators=(",", ":"), sort_keys=True)

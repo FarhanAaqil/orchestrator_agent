@@ -14,12 +14,15 @@ import os
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
+from orchestrator_core.core.circuit_breaker import CircuitBreaker
 from orchestrator_core.runner.sanitize import sanitize_observation
 from orchestrator_core.tools.read.shared_client import safe_get
 
 logger = logging.getLogger(__name__)
 
 GITHUB_ALLOWED_DOMAINS = ("api.github.com", "github.com")
+
+_github_breaker = CircuitBreaker("github_read_api", failure_threshold=3, cooldown_seconds=30.0)
 
 
 class GitHubReadArgs(BaseModel):
@@ -50,11 +53,14 @@ def github_read(
 
     action_clean = action.strip().lower()
 
+    def _fetch_gh(endpoint_url: str):
+        return _github_breaker.call(safe_get, endpoint_url, headers=headers, allowed_domains=GITHUB_ALLOWED_DOMAINS)
+
     try:
         if action_clean == "get_user":
             user = username or "FarhanAaqil"
             url = f"https://api.github.com/users/{user}"
-            resp = safe_get(url, headers=headers, allowed_domains=GITHUB_ALLOWED_DOMAINS)
+            resp = _fetch_gh(url)
             if resp.status_code == 200:
                 data = resp.json()
                 summary = (
@@ -69,7 +75,7 @@ def github_read(
         elif action_clean == "list_repos":
             user = username or "FarhanAaqil"
             url = f"https://api.github.com/users/{user}/repos?per_page=10&sort=updated"
-            resp = safe_get(url, headers=headers, allowed_domains=GITHUB_ALLOWED_DOMAINS)
+            resp = _fetch_gh(url)
             if resp.status_code == 200:
                 repos = resp.json()
                 lines = [f"Top repositories for {user}:"]
@@ -84,7 +90,7 @@ def github_read(
             if not repo:
                 return sanitize_observation("Error: 'repo' parameter required for 'get_repo'", source="github_api")
             url = f"https://api.github.com/repos/{repo}"
-            resp = safe_get(url, headers=headers, allowed_domains=GITHUB_ALLOWED_DOMAINS)
+            resp = _fetch_gh(url)
             if resp.status_code == 200:
                 r = resp.json()
                 info = (
@@ -100,7 +106,7 @@ def github_read(
             if not repo:
                 return sanitize_observation("Error: 'repo' parameter required for 'get_issues'", source="github_api")
             url = f"https://api.github.com/repos/{repo}/issues?per_page=5&state=open"
-            resp = safe_get(url, headers=headers, allowed_domains=GITHUB_ALLOWED_DOMAINS)
+            resp = _fetch_gh(url)
             if resp.status_code == 200:
                 issues = resp.json()
                 lines = [f"Recent open issues for {repo}:"]

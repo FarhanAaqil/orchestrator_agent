@@ -43,6 +43,7 @@ from orchestrator_core.exceptions import (
     SecurityPolicyViolationError,
     SSRFViolationError,
     TokenBudgetExceededError,
+    AgentDisabledError,
 )
 from orchestrator_core.models import ErrorResponse
 
@@ -236,6 +237,12 @@ async def job_timeout_handler(request: Request, exc: JobTimeoutError):
 async def loop_detected_handler(request: Request, exc: LoopDetectedError):
     return JSONResponse(status_code=422,
         content=ErrorResponse(error="LOOP_DETECTED", detail=str(exc)).model_dump())
+
+
+@app.exception_handler(AgentDisabledError)
+async def agent_disabled_handler(request: Request, exc: AgentDisabledError):
+    return JSONResponse(status_code=403,
+        content=ErrorResponse(error="AGENT_DISABLED", detail=str(exc)).model_dump())
 
 
 # ── Route registration ────────────────────────────────────────────────────────

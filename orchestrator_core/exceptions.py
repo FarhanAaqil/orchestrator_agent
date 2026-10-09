@@ -136,6 +136,13 @@ class JobError(Exception):
     pass
 
 
+class AgentDisabledError(SecurityPolicyViolationError, JobError):
+    """Raised when an administratively disabled agent is invoked or a job is queued for it."""
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+        super().__init__(f"Agent '{agent_id}' is administratively disabled and cannot execute jobs")
+
+
 class JobNotFoundError(JobError):
     """Raised when a job ID does not exist."""
     def __init__(self, job_id: str):
