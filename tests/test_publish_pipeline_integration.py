@@ -15,6 +15,8 @@ CONTRACT UNDER TEST:
 from unittest.mock import MagicMock, patch
 import pytest
 
+import orchestrator_core.agents.growth_content_agent  # Ensure module is loaded for patching
+
 from orchestrator_core.core.approval_gate import (
     approve,
     execute_approved,
