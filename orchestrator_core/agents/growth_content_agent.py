@@ -20,6 +20,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "growth_content_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset({"google_search", "fetch_page", "propose_action"})
+
 AAQIL_BIO = """
 Farhan Aaqil — Final year B.Tech AI/ML student at JPNCE Mahbubnagar.
 Building LLM agents, LangChain pipelines, and AI systems.

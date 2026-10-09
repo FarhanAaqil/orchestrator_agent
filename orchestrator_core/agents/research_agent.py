@@ -28,6 +28,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "research_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset({"google_search", "fetch_page", "arxiv_search", "ddg_search"})
+
 # ── SSRF guard configuration ───────────────────────────────────────────────────
 _PDF_ALLOWED_HOSTS = {"arxiv.org", "ar5iv.labs.arxiv.org"}
 _PDF_MAX_BYTES = 10 * 1024 * 1024   # 10 MB

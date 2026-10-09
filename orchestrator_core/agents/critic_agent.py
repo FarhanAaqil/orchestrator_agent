@@ -21,6 +21,9 @@ from orchestrator_core.models import AgentResult
 
 logger = logging.getLogger(__name__)
 
+AGENT_NAME = "critic_agent"
+TOOL_ALLOWLIST: frozenset[str] = frozenset()
+
 _SYSTEM_PROMPT = """You are a silent quality critic agent.
 You review written content and improve it when quality is below standard.
 Always return valid JSON. Never explain your process.

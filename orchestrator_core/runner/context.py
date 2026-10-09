@@ -57,13 +57,25 @@ Action specifications:
 """
 
 
-def build_system_prompt(job: JobRecord, custom_instructions: Optional[str] = None) -> str:
+def build_system_prompt(
+    job: JobRecord,
+    custom_instructions: Optional[str] = None,
+    available_tools: Optional[list[dict[str, Any]]] = None,
+) -> str:
     """Build the system prompt for the agent runner."""
     base = _DEFAULT_SYSTEM_TEMPLATE.format(
         agent=job.agent,
         job_id=job.id,
         thread_id=job.thread_id,
     )
+    if available_tools:
+        tools_summary = "\nAuthorized Tools for this agent:\n"
+        for t in available_tools:
+            fn = t.get("function", {})
+            name = fn.get("name", "")
+            desc = fn.get("description", "")
+            tools_summary += f"- {name}: {desc}\n"
+        base += tools_summary
     if custom_instructions:
         base += f"\nSpecial Agent Instructions:\n{custom_instructions}\n"
     return base
@@ -73,6 +85,7 @@ def build_messages(
     job: JobRecord,
     steps: list[JobStepRecord],
     custom_instructions: Optional[str] = None,
+    available_tools: Optional[list[dict[str, Any]]] = None,
 ) -> list[dict[str, str]]:
     """
     Rebuild the full message history from persisted steps in SQLite.
@@ -81,7 +94,7 @@ def build_messages(
     messages: list[dict[str, str]] = []
 
     # 1. System prompt
-    system_prompt = build_system_prompt(job, custom_instructions)
+    system_prompt = build_system_prompt(job, custom_instructions, available_tools=available_tools)
     messages.append({"role": "system", "content": system_prompt})
 
     # 2. Initial user goal

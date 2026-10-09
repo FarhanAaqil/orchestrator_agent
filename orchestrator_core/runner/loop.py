@@ -34,6 +34,7 @@ from orchestrator_core.runner.caps import check_guards
 from orchestrator_core.runner.context import build_messages
 from orchestrator_core.runner.repeat_detector import RepeatDetector
 from orchestrator_core.runner.sanitize import sanitize_observation
+from orchestrator_core.tools.registry import ToolRegistry, default_registry
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,22 @@ def run_job(
 
     start_time = time.monotonic()
     repeat_detector = RepeatDetector(job.id)
-    registry = tool_registry or {}
+
+    # Resolve capability-governed tools and schemas for this agent
+    if tool_registry is None:
+        agent_tools = default_registry.for_agent(job.agent)
+        registry = {name: spec.func for name, spec in agent_tools.items()}
+        tool_schemas = default_registry.schemas_for_agent(job.agent)
+    elif isinstance(tool_registry, ToolRegistry):
+        agent_tools = tool_registry.for_agent(job.agent)
+        registry = {name: spec.func for name, spec in agent_tools.items()}
+        tool_schemas = tool_registry.schemas_for_agent(job.agent)
+    else:
+        registry = {
+            k: (v.func if hasattr(v, "func") else v)
+            for k, v in tool_registry.items()
+        }
+        tool_schemas = None
 
     while True:
         # 1. Evaluate safety caps & guardrails
@@ -152,7 +168,9 @@ def run_job(
         # 3. Load checkpoints and reconstruct prompt messages
         steps = JobService.get_steps(job.id, db)
         step_idx = len(steps)
-        messages = build_messages(job, steps, custom_instructions=custom_instructions)
+        messages = build_messages(
+            job, steps, custom_instructions=custom_instructions, available_tools=tool_schemas
+        )
 
         # 4. Invoke LLM for the current turn
         t0 = time.monotonic()
@@ -242,23 +260,44 @@ def run_job(
             # Execute tool
             tool_fn = registry.get(tool_name)
             tool_ok = True
-            try:
-                if tool_fn is not None:
+            if tool_fn is None:
+                logger.warning("Tool '%s' is not in authorized registry for agent '%s'", tool_name, job.agent)
+                raw_tool_result = f"Error: Tool '{tool_name}' is not authorized for agent '{job.agent}' under capability policy."
+                tool_ok = False
+            else:
+                try:
+                    call_kwargs = dict(tool_args) if isinstance(tool_args, dict) else {}
+                    if tool_name == "propose_action" and "db" not in call_kwargs:
+                        call_kwargs["db"] = db
+
                     if isinstance(tool_args, dict):
-                        raw_tool_result = tool_fn(**tool_args)
+                        raw_tool_result = tool_fn(**call_kwargs)
                     else:
                         raw_tool_result = tool_fn(tool_args)
-                else:
-                    raw_tool_result = f"Tool '{tool_name}' completed execution with args: {tool_args}"
-            except Exception as tool_exc:
-                logger.warning("Tool execution error in job %s: %s", job.id, tool_exc)
-                raw_tool_result = f"Error executing tool '{tool_name}': {tool_exc}"
-                tool_ok = False
+                except Exception as tool_exc:
+                    logger.warning("Tool execution error in job %s: %s", job.id, tool_exc)
+                    raw_tool_result = f"Error executing tool '{tool_name}': {tool_exc}"
+                    tool_ok = False
 
             # Untrusted data sanitization
             sanitized = sanitize_observation(str(raw_tool_result), source=tool_name)
             if warning_msg:
                 sanitized = f"{warning_msg}\n\n{sanitized}"
+
+            # If propose_action was called via tool_call and queued approval
+            if tool_name == "propose_action" and isinstance(raw_tool_result, dict) and raw_tool_result.get("status") == "pending_approval":
+                JobService.record_step(
+                    job_id=job.id,
+                    idx=step_idx,
+                    kind="propose",
+                    name=str(tool_args.get("action_type") or "propose_action"),
+                    input_json=json.dumps(tool_args, separators=(",", ":")),
+                    output_json=json.dumps(raw_tool_result, separators=(",", ":")),
+                    ok=tool_ok,
+                    db=db,
+                )
+                logger.info("Job %s created proposal via propose_action tool. Pausing in awaiting_approval.", job.id)
+                return JobService.transition(job.id, "awaiting_approval", db, worker_id=worker_id)
 
             JobService.record_step(
                 job_id=job.id,
