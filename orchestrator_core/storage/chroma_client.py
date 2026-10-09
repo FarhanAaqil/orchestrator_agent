@@ -22,12 +22,17 @@ SUPPORTED_AGENTS = {
     "github_agent",
     "linkedin_agent",
     "general_chat_agent",
+    "episodes",
+    "memory",
 }
 
 
 def get_chroma_client(persist_directory: Optional[str] = None) -> Any:
-    """Lazily instantiate and return a PersistentClient instance."""
+    """Lazily instantiate and return a PersistentClient or EphemeralClient instance."""
     import chromadb
+
+    if persist_directory == ":memory:":
+        return chromadb.EphemeralClient()
 
     if persist_directory is None:
         persist_directory = get_settings().chroma_db_dir

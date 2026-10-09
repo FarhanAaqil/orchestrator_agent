@@ -172,6 +172,24 @@ CREATE TABLE IF NOT EXISTS system_flags (
     value TEXT NOT NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 11. Memory items table (semantic facts, user preferences, and episodic conversation summaries)
+CREATE TABLE IF NOT EXISTS memory_items (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('fact','preference','episode_summary')),
+    key TEXT,
+    value TEXT NOT NULL,
+    source_session_id TEXT REFERENCES conversations(id),
+    source_message_id TEXT REFERENCES messages(id),
+    pending_review INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_memory_items_kind ON memory_items(kind);
+CREATE INDEX IF NOT EXISTS idx_memory_items_pending ON memory_items(pending_review);
+CREATE INDEX IF NOT EXISTS idx_memory_items_deleted ON memory_items(deleted);
+CREATE INDEX IF NOT EXISTS idx_memory_items_session ON memory_items(source_session_id);
 """
 
 

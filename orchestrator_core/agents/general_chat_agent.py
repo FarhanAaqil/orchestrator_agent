@@ -43,12 +43,18 @@ Tone: Confident, direct, razor-sharp, grounded, and technically brilliant. No ex
 Deliver well-structured markdown answers that get straight to the point."""
 
 
-def _call_llm(prompt: str, context_history: Optional[str] = None) -> str:
+def _call_llm(
+    prompt: str,
+    context_history: Optional[str] = None,
+    memory_context: Optional[str] = None,
+) -> str:
     """Execute Groq LLM completion with fallback."""
     settings = get_settings()
     try:
         client = Groq(api_key=settings.groq_api_key)
         messages = [{"role": "system", "content": _TOJI_PROMPT}]
+        if memory_context:
+            messages.append({"role": "system", "content": f"Relevant Memories:\n{memory_context}"})
         if context_history:
             messages.append({"role": "system", "content": f"Prior Conversation Context:\n{context_history}"})
         messages.append({"role": "user", "content": prompt})
@@ -68,12 +74,18 @@ def _call_llm(prompt: str, context_history: Optional[str] = None) -> str:
         )
 
 
-def stream_llm(prompt: str, context_history: Optional[str] = None):
+def stream_llm(
+    prompt: str,
+    context_history: Optional[str] = None,
+    memory_context: Optional[str] = None,
+):
     """Execute Groq LLM streaming completion yielding token text deltas (§5c)."""
     settings = get_settings()
     try:
         client = Groq(api_key=settings.groq_api_key)
         messages = [{"role": "system", "content": _TOJI_PROMPT}]
+        if memory_context:
+            messages.append({"role": "system", "content": f"Relevant Memories:\n{memory_context}"})
         if context_history:
             messages.append({"role": "system", "content": f"Prior Conversation Context:\n{context_history}"})
         messages.append({"role": "user", "content": prompt})
@@ -106,8 +118,17 @@ def handle(command: str, metadata: Optional[dict[str, Any]] = None) -> AgentResu
     logger.info("[general_chat_agent] Processing message: %.80s", command)
     meta = dict(metadata or {})
     context_str = meta.get("conversation_history_text")
+    memory_str = meta.get("memory_context")
 
-    response_text = _call_llm(command, context_history=context_str)
+    db_conn = meta.get("db")
+    if not memory_str and db_conn:
+        try:
+            from orchestrator_core.memory.retrieval import get_context_slice
+            memory_str = get_context_slice(command, db=db_conn)
+        except Exception as exc:
+            logger.debug("[general_chat_agent] Context slice retrieval error: %s", exc)
+
+    response_text = _call_llm(command, context_history=context_str, memory_context=memory_str)
 
     return AgentResult(
         agent="general_chat_agent",
