@@ -11,7 +11,11 @@ from __future__ import annotations
 import logging
 import re
 from urllib.parse import urlparse
-from bs4 import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
+
 from pydantic import BaseModel, Field
 
 from orchestrator_core.runner.sanitize import sanitize_observation
@@ -27,21 +31,30 @@ class FetchPageArgs(BaseModel):
 
 def _extract_readable_text(html: str) -> str:
     """Extract clean readable text from HTML by stripping boilerplate and script tags."""
-    soup = BeautifulSoup(html, "html.parser")
+    if BeautifulSoup is not None:
+        soup = BeautifulSoup(html, "html.parser")
 
-    # Remove non-content elements
-    for element in soup(["script", "style", "noscript", "header", "footer", "nav", "svg", "form"]):
-        element.decompose()
+        # Remove non-content elements
+        for element in soup(["script", "style", "noscript", "header", "footer", "nav", "svg", "form"]):
+            element.decompose()
 
-    title = soup.title.string.strip() if soup.title and soup.title.string else "Untitled"
+        title = soup.title.string.strip() if soup.title and soup.title.string else "Untitled"
 
-    # Get body or full document text
-    body = soup.body or soup
-    text = body.get_text(separator="\n", strip=True)
+        # Get body or full document text
+        body = soup.body or soup
+        text = body.get_text(separator="\n", strip=True)
 
-    # Clean consecutive blank lines
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return f"Title: {title}\n\n{text}".strip()
+        # Clean consecutive blank lines
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return f"Title: {title}\n\n{text}".strip()
+
+    # Fallback when BeautifulSoup is not installed
+    clean = re.sub(r"<(script|style|noscript|header|footer|nav|svg|form)[^>]*>.*?</\1>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", html, flags=re.IGNORECASE | re.DOTALL)
+    title = title_match.group(1).strip() if title_match else "Untitled"
+    clean = re.sub(r"<[^>]+>", " ", clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return f"Title: {title}\n\n{clean}".strip()
 
 
 def fetch_page(url: str, max_chars: int = 8000) -> str:
