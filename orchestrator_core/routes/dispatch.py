@@ -21,7 +21,13 @@ from pydantic import BaseModel
 
 from orchestrator_core.core.approval_gate import request_approval
 from orchestrator_core.core.router import classify
-from orchestrator_core.models import AgentResult, ClarificationNeeded, ErrorResponse, RouterResult
+from orchestrator_core.models import (
+    AgentResult,
+    ClarificationNeeded,
+    ErrorResponse,
+    RouterResult,
+    canonical_agent_name,
+)
 from orchestrator_core.storage.db import get_db, get_db_connection
 
 logger = logging.getLogger(__name__)
@@ -148,6 +154,22 @@ async def dispatch_command(
                 detail=f"Agent '{agent_name}' is not registered in the dispatch registry.",
             ).model_dump(),
         )
+
+    # 4b. Verify agent is not administratively disabled
+    canonical = canonical_agent_name(agent_name)
+    flag_rows = db.execute(
+        "SELECT value FROM system_flags WHERE key IN (?, ?)",
+        (f"agent_enabled_{canonical}", f"agent_enabled_{agent_name}"),
+    ).fetchall()
+    for r in flag_rows:
+        if r["value"].strip() == "0":
+            return JSONResponse(
+                status_code=403,
+                content=ErrorResponse(
+                    error="AGENT_DISABLED",
+                    detail=f"Agent '{agent_name}' is administratively disabled.",
+                ).model_dump(),
+            )
 
     # 5. Execute agent with context injection
     handler = registry[agent_name]

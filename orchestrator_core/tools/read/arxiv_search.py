@@ -15,12 +15,15 @@ from io import BytesIO
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
+from orchestrator_core.core.circuit_breaker import CircuitBreaker
 from orchestrator_core.runner.sanitize import sanitize_observation
 from orchestrator_core.tools.read.shared_client import safe_get
 
 logger = logging.getLogger(__name__)
 
 ARXIV_ALLOWED_DOMAINS = ("arxiv.org", "ar5iv.labs.arxiv.org", "export.arxiv.org")
+
+_arxiv_breaker = CircuitBreaker("arxiv_search_api", failure_threshold=3, cooldown_seconds=30.0)
 
 
 class ArxivSearchArgs(BaseModel):
@@ -43,13 +46,17 @@ def arxiv_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
         import arxiv
 
         client = arxiv.Client()
-        search = arxiv.Search(
-            query=query,
-            max_results=min(max_results, 10),
-            sort_by=arxiv.SortCriterion.Relevance,
-        )
+        def _do_search():
+            search = arxiv.Search(
+                query=query,
+                max_results=min(max_results, 10),
+                sort_by=arxiv.SortCriterion.Relevance,
+            )
+            return list(client.results(search))
+
+        paper_list = _arxiv_breaker.call(_do_search)
         results = []
-        for paper in client.results(search):
+        for paper in paper_list:
             results.append({
                 "title": paper.title,
                 "authors": [a.name for a in paper.authors[:4]],

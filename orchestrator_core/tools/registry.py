@@ -16,12 +16,12 @@ import logging
 from typing import Any, Optional
 
 from orchestrator_core.tools.propose.propose_action import ProposeActionArgs, propose_action
-from orchestrator_core.tools.read.arxiv_search import ArxivSearchArgs, arxiv_search
-from orchestrator_core.tools.read.ddg_search import DDGSearchArgs, ddg_search
+from orchestrator_core.tools.read.arxiv_search import ArxivSearchArgs, _arxiv_breaker, arxiv_search
+from orchestrator_core.tools.read.ddg_search import DDGSearchArgs, _ddg_breaker, ddg_search
 from orchestrator_core.tools.read.email_read import EmailReadArgs, email_read
 from orchestrator_core.tools.read.fetch_page import FetchPageArgs, fetch_page
-from orchestrator_core.tools.read.github_read import GitHubReadArgs, github_read
-from orchestrator_core.tools.read.google_search import GoogleSearchArgs, google_search
+from orchestrator_core.tools.read.github_read import GitHubReadArgs, _github_breaker, github_read
+from orchestrator_core.tools.read.google_search import GoogleSearchArgs, _google_search_breaker, google_search
 from orchestrator_core.tools.spec import Capability, ToolSpec
 
 logger = logging.getLogger(__name__)
@@ -50,25 +50,10 @@ AGENT_TOOL_ALLOWLISTS: dict[str, frozenset[str]] = {
     "orchestrator": frozenset({"google_search", "fetch_page", "arxiv_search", "ddg_search", "github_read", "email_read", "propose_action"}),
 }
 
-# Alias map for short agent names
-_AGENT_ALIASES: dict[str, str] = {
-    "research": "research_agent",
-    "career": "career_agent",
-    "growth": "growth_content_agent",
-    "growth_content": "growth_content_agent",
-    "critic": "critic_agent",
-    "github": "github_agent",
-    "email": "email_agent",
-    "linkedin": "linkedin_agent",
-    "info": "info_agent",
-    "general_chat": "general_chat_agent",
-    "general": "general_chat_agent",
-}
+from orchestrator_core.models import AGENT_ALIASES, canonical_agent_name
 
-
-def _canonical_agent_name(name: str) -> str:
-    cleaned = name.strip().lower()
-    return _AGENT_ALIASES.get(cleaned, cleaned)
+_AGENT_ALIASES = AGENT_ALIASES
+_canonical_agent_name = canonical_agent_name
 
 
 class ToolRegistry:
@@ -245,3 +230,23 @@ def create_default_registry() -> ToolRegistry:
 
 # Singleton default registry instance
 default_registry = create_default_registry()
+
+# Circuit breakers guarding fragile external services
+ALL_TOOL_BREAKERS = {
+    "google_search": _google_search_breaker,
+    "ddg_search": _ddg_breaker,
+    "github_read": _github_breaker,
+    "arxiv_search": _arxiv_breaker,
+}
+
+EXTERNAL_SERVICE_BREAKERS = {
+    "google_search_api": _google_search_breaker,
+    "ddg_search_api": _ddg_breaker,
+    "github_read_api": _github_breaker,
+    "arxiv_search_api": _arxiv_breaker,
+}
+
+
+def get_tool_circuit_status() -> dict[str, str]:
+    """Return status (CLOSED, OPEN, HALF_OPEN) of each tool circuit breaker."""
+    return {name: cb.state for name, cb in ALL_TOOL_BREAKERS.items()}

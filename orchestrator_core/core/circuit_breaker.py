@@ -51,7 +51,34 @@ class CircuitBreaker:
 
     @property
     def state(self) -> str:
-        return self._state
+        with self._lock:
+            self._check_transition()
+            return self._state
+
+    @state.setter
+    def state(self, value: str) -> None:
+        with self._lock:
+            self._state = value
+            if value == "OPEN":
+                self._opened_at = time.monotonic()
+                self._consecutive_failures = self.failure_threshold
+            elif value == "CLOSED":
+                self._consecutive_failures = 0
+                self._opened_at = 0.0
+
+    def can_execute(self) -> bool:
+        """Return True if calls are currently permitted through the circuit breaker."""
+        with self._lock:
+            self._check_transition()
+            return self._state != "OPEN"
+
+    def record_failure(self) -> None:
+        """Record an external failure directly without requiring call() wrapper."""
+        self._on_failure()
+
+    def record_success(self) -> None:
+        """Record an external success directly without requiring call() wrapper."""
+        self._on_success()
 
     def _check_transition(self) -> None:
         """Check whether OPEN should transition to HALF_OPEN based on cooldown."""
