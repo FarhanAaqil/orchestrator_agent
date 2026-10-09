@@ -20,7 +20,6 @@ from typing import Any, Callable, Optional
 from orchestrator_core.config import get_settings
 from orchestrator_core.jobs.reaper import reap_zombies
 from orchestrator_core.jobs.service import JobService
-from orchestrator_core.runner.loop import run_job
 from orchestrator_core.storage.db import get_db
 
 logger = logging.getLogger(__name__)
@@ -81,6 +80,8 @@ class Worker:
                 return False
 
             # 4. Execute claimed job
+            from orchestrator_core.runner.loop import run_job
+
             logger.info("Worker %s executing claimed job %s (agent=%s)", self.worker_id, job.id, job.agent)
             run_job(
                 job=job,

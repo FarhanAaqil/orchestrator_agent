@@ -34,7 +34,6 @@ from orchestrator_core.runner.caps import check_guards
 from orchestrator_core.runner.context import build_messages
 from orchestrator_core.runner.repeat_detector import RepeatDetector
 from orchestrator_core.runner.sanitize import sanitize_observation
-from orchestrator_core.tools.registry import ToolRegistry, default_registry
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +131,8 @@ def run_job(
     repeat_detector = RepeatDetector(job.id)
 
     # Resolve capability-governed tools and schemas for this agent
+    from orchestrator_core.tools.registry import ToolRegistry, default_registry
+
     if tool_registry is None:
         agent_tools = default_registry.for_agent(job.agent)
         registry = {name: spec.func for name, spec in agent_tools.items()}
